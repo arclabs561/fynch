@@ -1,0 +1,33 @@
+[package]
+name = "fynch"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, soft operators"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/arclabs561/fynch"
+keywords = ["sorting", "ranking", "differentiable", "isotonic", "fenchel"]
+categories = ["algorithms", "science", "mathematics"]
+
+[features]
+default = []
+# SIMD acceleration via innr crate
+simd = ["dep:innr"]
+# Gumbel-Softmax for stochastic top-k
+gumbel = ["dep:rand"]
+
+[dependencies]
+ndarray = "0.16"
+thiserror = "2.0"
+
+# Optional: SIMD primitives
+innr = { path = "../innr", optional = true }
+# Optional: Random number generation for Gumbel noise
+rand = { version = "0.9", optional = true }
+
+[dev-dependencies]
+approx = "0.5"
+proptest = "1.4"
+
+[profile.release]
+lto = "thin"

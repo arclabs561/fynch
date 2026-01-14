@@ -1,30 +1,30 @@
 # fynch
 
-Fenchel-Young losses and differentiable sorting/ranking.
+Fenchel-Young losses, differentiable sorting, learning-to-rank primitives.
 
-The name comes from **Fenchel-Young losses** (Blondel et al. 2020), a unifying
-framework connecting prediction functions and loss functions through convex duality.
+(fynch: from Fenchel-Young)
 
 Dual-licensed under MIT or Apache-2.0.
 
 ```rust
-use fynch::fenchel::{softmax, sparsemax, entmax};
+use fynch::{softmax, sparsemax, entmax, softmax_with_temperature};
 use fynch::{pava, soft_rank};
 
-// Fenchel-Young predictions
+// Prediction functions with tunable sparsity
 let theta = [2.0, 1.0, 0.1];
-let p_soft = softmax(&theta);    // dense (cross-entropy)
-let p_sparse = sparsemax(&theta); // sparse (simplex projection)
-let p_ent = entmax(&theta, 1.5);  // tunable sparsity
+let p = softmax(&theta);              // dense
+let p = sparsemax(&theta);            // sparse
+let p = entmax(&theta, 1.5);          // tunable
+let p = softmax_with_temperature(&theta, 0.5);  // sharper
 
 // Differentiable sorting
 let y = [3.0, 1.0, 2.0, 5.0, 4.0];
-let monotonic = pava(&y);  // isotonic regression
+let monotonic = pava(&y);  // isotonic regression (PAVA)
 ```
 
 ## The Framework
 
-Given a regularizer Ω, the Fenchel-Young loss is:
+Fenchel-Young losses unify prediction functions and losses via convex duality:
 
 ```
 L_Ω(θ; y) = Ω*(θ) - ⟨θ, y⟩ + Ω(y)
@@ -40,26 +40,30 @@ L_Ω(θ; y) = Ω*(θ) - ⟨θ, y⟩ + Ω(y)
 
 | Module | Contents |
 |--------|----------|
-| `fenchel` | Generic FY framework: regularizers, predictions, losses |
+| `fenchel` | Regularizers, predictions, temperature scaling, entropy |
 | `sinkhorn` | Entropic OT for soft permutations |
-| `loss` | Learning-to-rank losses (ListNet, ListMLE, Spearman) |
-| `metrics` | IR evaluation (MRR, NDCG, Hits@k) |
+| `loss` | Learning-to-rank: ListNet, ListMLE, ApproxNDCG |
+| `metrics` | IR evaluation: MRR, NDCG, Hits@k |
+| `sigmoid` | Numerically stable sigmoid, log-sigmoid, softplus |
+| `topk` | Differentiable top-k selection, Gumbel-softmax |
 
-## Connection to Entropy Calibration
+## Temperature and Entropy
 
-Temperature scaling and truncation (top-k/top-p) are standard methods to calibrate
-LLM generation entropy. The FY framework provides a principled view:
+Temperature scaling and truncation (top-k/top-p) calibrate LLM generation:
 
-- **Shannon (softmax)**: Dense predictions, tends toward high entropy
-- **Sparsemax**: Naturally truncates low-probability tokens (like top-k)
-- **Temperature**: Equivalent to scaling logits before FY transformation
+- **Shannon (softmax)**: Dense, tends toward high entropy
+- **Sparsemax**: Naturally truncates low-probability tokens
+- **Temperature < 1**: Sharper distributions, lower entropy
 
-See `surp::entropy_calibration` for metrics and `surp::zipf` for why heavy-tailed
-distributions make calibration difficult.
+See `surp::entropy_calibration` for entropy-based LLM metrics.
+
+## Connections
+
+- [`surp`](../surp): Temperature affects entropy calibration
+- [`wass`](../wass): Sinkhorn algorithm for OT and soft sorting
 
 ## References
 
 - Blondel, Martins, Niculae (2020). "Learning with Fenchel-Young Losses"
 - Martins & Astudillo (2016). "From Softmax to Sparsemax"
 - Blondel et al. (2020). "Fast Differentiable Sorting and Ranking"
-- Cao, Valiant, Liang (2025). "On the Entropy Calibration of Language Models"

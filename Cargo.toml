@@ -1,8 +1,8 @@
 [package]
 name = "fynch"
 version = "0.1.0"
+authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
-rust-version = "1.75"
 description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, soft operators"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/arclabs561/fynch"
@@ -14,20 +14,30 @@ default = []
 # SIMD acceleration via innr crate
 simd = ["dep:innr"]
 # Gumbel-Softmax for stochastic top-k
-gumbel = ["dep:rand"]
+gumbel = ["dep:kuji", "dep:rand"]
 
 [dependencies]
-ndarray = "0.16"
 thiserror = "2.0"
+logp = "0.1.0"
+serde = { version = "1.0", features = ["derive"] }
+rand = { version = "0.9", optional = true }
 
 # Optional: SIMD primitives
-innr = { path = "../innr", optional = true }
-# Optional: Random number generation for Gumbel noise
-rand = { version = "0.9", optional = true }
+innr = { version = "0.1.0", optional = true }
+# Optional: Stochastic sampling
+kuji = { version = "0.1.0", optional = true }
 
 [dev-dependencies]
 approx = "0.5"
-proptest = "1.4"
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.5"
+rand = "0.9"
+serde_json = "1.0"
 
-[profile.release]
-lto = "thin"
+[[bench]]
+name = "fy_bench"
+harness = false
+
+[[bench]]
+name = "sinkhorn_bench"
+harness = false

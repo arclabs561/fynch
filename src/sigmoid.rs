@@ -144,7 +144,7 @@ mod tests {
     fn test_sigmoid_derivative() {
         // Max at 0
         assert!((sigmoid_derivative(0.0) - 0.25).abs() < 1e-10);
-        
+
         // Decreases away from 0
         assert!(sigmoid_derivative(1.0) < sigmoid_derivative(0.0));
         assert!(sigmoid_derivative(-1.0) < sigmoid_derivative(0.0));
@@ -155,7 +155,7 @@ mod tests {
         // log(0.5) = -ln(2)
         let expected = -std::f64::consts::LN_2;
         assert!((log_sigmoid(0.0) - expected).abs() < 1e-10);
-        
+
         // Should be negative for all x
         for x in [-10.0, -1.0, 0.0, 1.0, 10.0] {
             assert!(log_sigmoid(x) < 0.0);
@@ -166,7 +166,7 @@ mod tests {
     fn test_softplus() {
         // log(2) at 0
         assert!((softplus(0.0) - std::f64::consts::LN_2).abs() < 1e-10);
-        
+
         // Positive for all x
         for x in [-10.0, -1.0, 0.0, 1.0, 10.0] {
             assert!(softplus(x) > 0.0);

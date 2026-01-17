@@ -1,8 +1,11 @@
 # fynch
 
-Differentiable sorting and ranking: PAVA, Fenchel-Young losses, soft operators.
+Differentiable sorting and ranking primitives for structured prediction and isotonic regression.
+Implements PAVA, Fenchel-Young losses, and entropy-regularized operators.
 
 Dual-licensed under MIT or Apache-2.0.
+
+[crates.io](https://crates.io/crates/fynch) | [docs.rs](https://docs.rs/fynch)
 
 ```rust
 use fynch::{entmax, pava, soft_rank};
@@ -16,5 +19,3 @@ let r = soft_rank(&y, 1.0);
 
 println!("p={p:?}\nisotonic={isotonic:?}\nsoft_rank={r:?}");
 ```
-
-For more, see the crate docs.

@@ -5,7 +5,8 @@ authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, soft operators"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/arclabs561/fynch"
+documentation = "https://docs.rs/fynch"
+repository = "https://github.com/arclabs561/tekne"
 keywords = ["sorting", "ranking", "differentiable", "isotonic", "fenchel"]
 categories = ["algorithms", "science", "mathematics"]
 
@@ -17,10 +18,10 @@ simd = ["dep:innr"]
 gumbel = ["dep:kuji", "dep:rand"]
 
 [dependencies]
-thiserror = "2.0"
+thiserror = { workspace = true }
 logp = "0.1.0"
-serde = { version = "1.0", features = ["derive"] }
-rand = { version = "0.9", optional = true }
+serde = { workspace = true }
+rand = { workspace = true, optional = true }
 
 # Optional: SIMD primitives
 innr = { version = "0.1.0", optional = true }
@@ -30,8 +31,8 @@ kuji = { version = "0.1.0", optional = true }
 [dev-dependencies]
 approx = "0.5"
 criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1.5"
-rand = "0.9"
+proptest = { workspace = true }
+rand = { workspace = true }
 serde_json = "1.0"
 
 [[bench]]

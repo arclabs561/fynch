@@ -78,7 +78,7 @@
 //! ### Fenchel-Young Losses
 //!
 //! ```rust
-//! use fynch::fenchel::{Shannon, SquaredL2, Tsallis, Regularizer};
+//! use fynch::fenchel::{Regularizer, Shannon, SquaredL2, Tsallis};
 //!
 //! let theta = [2.0, 1.0, 0.1];
 //! let y = [1.0, 0.0, 0.0];  // one-hot target
@@ -86,7 +86,7 @@
 //! // Cross-entropy (Shannon)
 //! let loss_ce = Shannon.loss(&theta, &y);
 //!
-//! // Sparsemax loss
+//! // Sparsemax-style FY loss via squared L2 regularizer
 //! let loss_sp = SquaredL2.loss(&theta, &y);
 //!
 //! // 1.5-entmax loss
@@ -129,7 +129,7 @@
 //! ## Connections
 //!
 //! - [`wass`](../wass): Sinkhorn OT is the same algorithm
-//! - [`surp`](../surp): Shannon entropy connects to information theory
+//! - [`logp`](../logp): Shannon entropy connects to information theory
 //! - [`cerno`](../cerno): More comprehensive IR evaluation
 //!
 //! ## What Can Go Wrong
@@ -156,15 +156,13 @@ pub mod topk;
 use thiserror::Error;
 
 pub use fenchel::{
-    entmax, Shannon, softmax, sparsemax, SquaredL2, Tsallis, Regularizer,
-    softmax_with_temperature, entropy_nats, entropy_bits,
+    entmax, entropy_bits, entropy_nats, softmax, softmax_with_temperature, sparsemax, Regularizer,
+    Shannon, SquaredL2, Tsallis,
 };
-pub use metrics::{
-    compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics,
-};
+pub use metrics::{compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics};
 pub use sigmoid::{sigmoid, sigmoid_derivative};
 pub use sinkhorn::{sinkhorn_rank, sinkhorn_sort, SinkhornConfig};
-pub use topk::{differentiable_topk, differentiable_bottomk};
+pub use topk::{differentiable_bottomk, differentiable_topk};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -243,7 +241,11 @@ pub fn pava(y: &[f64]) -> Vec<f64> {
             if mean1 > mean2 {
                 // Merge last two blocks
                 blocks.pop();
-                let last = blocks.last_mut().unwrap();
+                let Some(last) = blocks.last_mut() else {
+                    // Safety: blocks.len() > 1 before pop, so one block must remain.
+                    debug_assert!(false, "blocks unexpectedly empty after pop");
+                    break;
+                };
                 last.1 += sum2;
                 last.2 += cnt2;
             } else {
@@ -255,8 +257,8 @@ pub fn pava(y: &[f64]) -> Vec<f64> {
     // Expand blocks back to result
     for (start, sum, count) in blocks {
         let mean = sum / count as f64;
-        for j in start..(start + count) {
-            result[j] = mean;
+        for r in result.iter_mut().skip(start).take(count) {
+            *r = mean;
         }
     }
 
@@ -306,7 +308,11 @@ pub fn pava_weighted(y: &[f64], weights: &[f64]) -> Result<Vec<f64>> {
 
             if mean1 > mean2 {
                 blocks.pop();
-                let last = blocks.last_mut().unwrap();
+                let Some(last) = blocks.last_mut() else {
+                    // Safety: blocks.len() > 1 before pop, so one block must remain.
+                    debug_assert!(false, "blocks unexpectedly empty after pop");
+                    break;
+                };
                 last.1 += wsum2;
                 last.2 += w2;
             } else {
@@ -316,8 +322,7 @@ pub fn pava_weighted(y: &[f64], weights: &[f64]) -> Result<Vec<f64>> {
     }
 
     // Determine block boundaries
-    let mut block_idx = 0;
-    for (start, wsum, total_w) in &blocks {
+    for (block_idx, (start, wsum, total_w)) in blocks.iter().enumerate() {
         let mean = wsum / total_w;
         // Find how many elements this block covers
         let end = if block_idx + 1 < blocks.len() {
@@ -325,10 +330,9 @@ pub fn pava_weighted(y: &[f64], weights: &[f64]) -> Result<Vec<f64>> {
         } else {
             n
         };
-        for j in *start..end {
-            result[j] = mean;
+        for r in result.iter_mut().skip(*start).take(end - *start) {
+            *r = mean;
         }
-        block_idx += 1;
     }
 
     Ok(result)

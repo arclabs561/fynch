@@ -59,11 +59,7 @@ use crate::soft_rank;
 /// assert!(indicators[2] < 0.5);
 /// assert!(indicators[4] < 0.5);
 /// ```
-pub fn differentiable_topk(
-    values: &[f64],
-    k: usize,
-    temperature: f64,
-) -> (Vec<f64>, Vec<f64>) {
+pub fn differentiable_topk(values: &[f64], k: usize, temperature: f64) -> (Vec<f64>, Vec<f64>) {
     let n = values.len();
     if n == 0 || k == 0 {
         return (vec![], vec![]);
@@ -123,11 +119,7 @@ pub fn differentiable_topk(
 /// assert!(indicators[0] > 0.5);
 /// assert!(indicators[4] > 0.5);
 /// ```
-pub fn differentiable_bottomk(
-    values: &[f64],
-    k: usize,
-    temperature: f64,
-) -> (Vec<f64>, Vec<f64>) {
+pub fn differentiable_bottomk(values: &[f64], k: usize, temperature: f64) -> (Vec<f64>, Vec<f64>) {
     let n = values.len();
     if n == 0 || k == 0 {
         return (vec![], vec![]);
@@ -211,10 +203,13 @@ pub mod gumbel {
         rng: &mut R,
     ) -> Vec<f64> {
         let noisy = add_gumbel_noise(logits, rng);
-        
+
         // Softmax with temperature
         let max = noisy.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let exps: Vec<f64> = noisy.iter().map(|&l| ((l - max) / temperature).exp()).collect();
+        let exps: Vec<f64> = noisy
+            .iter()
+            .map(|&l| ((l - max) / temperature).exp())
+            .collect();
         let sum: f64 = exps.iter().sum();
         exps.iter().map(|&e| e / sum).collect()
     }
@@ -233,13 +228,33 @@ mod tests {
         assert_eq!(indicators.len(), 5);
 
         // Indices 1 (0.9) and 3 (0.8) should be top-2
-        assert!(indicators[1] > 0.5, "0.9 should be in top-2: {}", indicators[1]);
-        assert!(indicators[3] > 0.5, "0.8 should be in top-2: {}", indicators[3]);
+        assert!(
+            indicators[1] > 0.5,
+            "0.9 should be in top-2: {}",
+            indicators[1]
+        );
+        assert!(
+            indicators[3] > 0.5,
+            "0.8 should be in top-2: {}",
+            indicators[3]
+        );
 
         // Others should not be in top-2
-        assert!(indicators[0] < 0.5, "0.1 should not be in top-2: {}", indicators[0]);
-        assert!(indicators[2] < 0.5, "0.5 should not be in top-2: {}", indicators[2]);
-        assert!(indicators[4] < 0.5, "0.2 should not be in top-2: {}", indicators[4]);
+        assert!(
+            indicators[0] < 0.5,
+            "0.1 should not be in top-2: {}",
+            indicators[0]
+        );
+        assert!(
+            indicators[2] < 0.5,
+            "0.5 should not be in top-2: {}",
+            indicators[2]
+        );
+        assert!(
+            indicators[4] < 0.5,
+            "0.2 should not be in top-2: {}",
+            indicators[4]
+        );
     }
 
     #[test]
@@ -248,8 +263,16 @@ mod tests {
         let (_, indicators) = differentiable_bottomk(&values, 2, 0.1);
 
         // Indices 0 (0.1) and 4 (0.2) should be bottom-2
-        assert!(indicators[0] > 0.5, "0.1 should be in bottom-2: {}", indicators[0]);
-        assert!(indicators[4] > 0.5, "0.2 should be in bottom-2: {}", indicators[4]);
+        assert!(
+            indicators[0] > 0.5,
+            "0.1 should be in bottom-2: {}",
+            indicators[0]
+        );
+        assert!(
+            indicators[4] > 0.5,
+            "0.2 should be in bottom-2: {}",
+            indicators[4]
+        );
 
         // Others should not be in bottom-2
         assert!(indicators[1] < 0.5);
@@ -276,7 +299,7 @@ mod tests {
     fn test_topk_k_geq_n() {
         let values = [1.0, 2.0, 3.0];
         let (w, indicators) = differentiable_topk(&values, 5, 0.1);
-        
+
         assert_eq!(w, values);
         for &i in &indicators {
             assert_eq!(i, 1.0);
@@ -286,19 +309,33 @@ mod tests {
     #[test]
     fn test_temperature_effect() {
         let values = [0.1, 0.9, 0.5];
-        
+
         // Low temperature = sharp
         let (_, indicators_sharp) = differentiable_topk(&values, 1, 0.01);
         // High temperature = smooth
         let (_, indicators_smooth) = differentiable_topk(&values, 1, 1.0);
 
         // Sharp should be closer to {0, 1}
-        let sharp_entropy: f64 = indicators_sharp.iter()
-            .map(|&p| if p > 0.0 && p < 1.0 { -p * p.ln() - (1.0 - p) * (1.0 - p).ln() } else { 0.0 })
+        let sharp_entropy: f64 = indicators_sharp
+            .iter()
+            .map(|&p| {
+                if p > 0.0 && p < 1.0 {
+                    -p * p.ln() - (1.0 - p) * (1.0 - p).ln()
+                } else {
+                    0.0
+                }
+            })
             .sum();
-        
-        let smooth_entropy: f64 = indicators_smooth.iter()
-            .map(|&p| if p > 0.0 && p < 1.0 { -p * p.ln() - (1.0 - p) * (1.0 - p).ln() } else { 0.0 })
+
+        let smooth_entropy: f64 = indicators_smooth
+            .iter()
+            .map(|&p| {
+                if p > 0.0 && p < 1.0 {
+                    -p * p.ln() - (1.0 - p) * (1.0 - p).ln()
+                } else {
+                    0.0
+                }
+            })
             .sum();
 
         assert!(

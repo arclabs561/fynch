@@ -32,6 +32,24 @@
 //! - Taylor et al. (2008). "SoftRank: Optimizing Non-smooth Rank Metrics"
 
 use crate::soft_rank;
+use crate::sigmoid;
+
+/// InfoNCE (Information Noise-Contrastive Estimation) Loss.
+/// 
+/// L = -log( exp(pos / tau) / sum(exp(all / tau)) )
+pub fn info_nce_loss(pos_score: f64, neg_scores: &[f64], temperature: f64) -> f64 {
+    let pos = pos_score / temperature;
+    
+    let mut max_score = pos;
+    for &s in neg_scores {
+        max_score = max_score.max(s / temperature);
+    }
+    
+    let sum_exp = (pos - max_score).exp() + 
+        neg_scores.iter().map(|&s| (s / temperature - max_score).exp()).sum::<f64>();
+    
+    -(pos - max_score - sum_exp.ln())
+}
 
 /// Spearman correlation loss.
 ///
@@ -301,7 +319,11 @@ mod tests {
         let pred = [1.0, 2.0, 3.0, 4.0];
         let target = [10.0, 20.0, 30.0, 40.0];
         let loss = spearman_loss(&pred, &target, 0.1);
-        assert!(loss < 0.1, "Perfect correlation should give low loss: {}", loss);
+        assert!(
+            loss < 0.1,
+            "Perfect correlation should give low loss: {}",
+            loss
+        );
     }
 
     #[test]
@@ -310,7 +332,11 @@ mod tests {
         let pred = [4.0, 3.0, 2.0, 1.0];
         let target = [1.0, 2.0, 3.0, 4.0];
         let loss = spearman_loss(&pred, &target, 0.1);
-        assert!(loss > 1.5, "Negative correlation should give high loss: {}", loss);
+        assert!(
+            loss > 1.5,
+            "Negative correlation should give high loss: {}",
+            loss
+        );
     }
 
     #[test]
@@ -335,7 +361,11 @@ mod tests {
         let target = [3.0, 1.0, 2.0];
         let loss = pairwise_margin_loss(&pred, &target, 0.1);
         // Should be low since ranking is correct
-        assert!(loss < 0.5, "Correct ranking should have low margin loss: {}", loss);
+        assert!(
+            loss < 0.5,
+            "Correct ranking should have low margin loss: {}",
+            loss
+        );
     }
 
     #[test]
@@ -353,5 +383,31 @@ mod tests {
             loss_wrong,
             loss_right
         );
+    }
+
+    use proptest::prelude::*;
+    proptest! {
+        #[test]
+        fn prop_infonce_non_negative(
+            pos in -10.0f64..10.0,
+            negs in prop::collection::vec(-10.0f64..10.0, 1..16),
+            temp in 0.1f64..2.0
+        ) {
+            let loss = info_nce_loss(pos, &negs, temp);
+            // InfoNCE is cross-entropy, so it should be non-negative.
+            prop_assert!(loss >= 0.0);
+        }
+
+        #[test]
+        fn prop_infonce_higher_pos_lower_loss(
+            pos1 in -10.0f64..0.0,
+            pos2 in 0.0f64..10.0,
+            negs in prop::collection::vec(-10.0f64..10.0, 1..16),
+            temp in 0.1f64..2.0
+        ) {
+            let loss1 = info_nce_loss(pos1, &negs, temp);
+            let loss2 = info_nce_loss(pos2, &negs, temp);
+            prop_assert!(loss2 < loss1);
+        }
     }
 }

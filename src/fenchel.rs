@@ -487,7 +487,7 @@ pub fn softmax_with_temperature(theta: &[f64], temperature: f64) -> Vec<f64> {
         let n = theta.len() as f64;
         return vec![1.0 / n; theta.len()];
     }
-    
+
     let scaled: Vec<f64> = theta.iter().map(|&t| t / temperature).collect();
     softmax(&scaled)
 }
@@ -597,27 +597,27 @@ mod tests {
     #[test]
     fn test_softmax_temperature_scaling() {
         let theta = [2.0, 1.0, 0.1];
-        
+
         let cold = softmax_with_temperature(&theta, 0.5);
         let normal = softmax_with_temperature(&theta, 1.0);
         let hot = softmax_with_temperature(&theta, 2.0);
-        
+
         // All should sum to 1
         assert!((cold.iter().sum::<f64>() - 1.0).abs() < 1e-10);
         assert!((normal.iter().sum::<f64>() - 1.0).abs() < 1e-10);
         assert!((hot.iter().sum::<f64>() - 1.0).abs() < 1e-10);
-        
+
         // Normal should match regular softmax
         let regular = softmax(&theta);
         for (a, b) in normal.iter().zip(&regular) {
             assert!((a - b).abs() < 1e-10);
         }
-        
+
         // Cold should be more peaked (lower entropy)
         let h_cold = entropy_bits(&cold);
         let h_normal = entropy_bits(&normal);
         let h_hot = entropy_bits(&hot);
-        
+
         assert!(h_cold < h_normal, "cold={}, normal={}", h_cold, h_normal);
         assert!(h_normal < h_hot, "normal={}, hot={}", h_normal, h_hot);
     }

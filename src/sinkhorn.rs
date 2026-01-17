@@ -303,8 +303,16 @@ mod tests {
         let ranks = sinkhorn_rank(&values, 0.1).unwrap();
 
         // Hard ranks: [2, 0, 1]
-        assert!(ranks[0] > 1.5, "largest should have rank ~2, got {}", ranks[0]);
-        assert!(ranks[1] < 0.5, "smallest should have rank ~0, got {}", ranks[1]);
+        assert!(
+            ranks[0] > 1.5,
+            "largest should have rank ~2, got {}",
+            ranks[0]
+        );
+        assert!(
+            ranks[1] < 0.5,
+            "smallest should have rank ~0, got {}",
+            ranks[1]
+        );
         assert!(
             ranks[2] > 0.5 && ranks[2] < 1.5,
             "middle should have rank ~1, got {}",

@@ -199,7 +199,7 @@ pub fn ndcg(relevance: &[f64], ideal: &[f64]) -> f64 {
 /// Discounted Cumulative Gain (DCG).
 ///
 /// Helper for NDCG. Sums relevance weighted by log position.
-fn dcg(relevance: &[f64]) -> f64 {
+pub fn dcg(relevance: &[f64]) -> f64 {
     relevance
         .iter()
         .enumerate()
@@ -261,10 +261,8 @@ pub fn compute_rank(target_score: f64, all_scores: &[f64], higher_is_better: boo
             if score > target_score {
                 rank += 1;
             }
-        } else {
-            if score < target_score {
-                rank += 1;
-            }
+        } else if score < target_score {
+            rank += 1;
         }
     }
     rank
@@ -287,6 +285,119 @@ pub struct RankingMetrics {
     pub mean_rank: f64,
     /// Number of queries
     pub count: usize,
+}
+
+/// Precision at k: fraction of top-k that are relevant.
+///
+/// P@k = |relevant ∩ top-k| / k
+///
+/// For rank-based input, this assumes rank <= k means relevant.
+pub fn precision_at_k(ranks: &[usize], k: usize) -> f64 {
+    if k == 0 {
+        return 0.0;
+    }
+    let hits = ranks.iter().filter(|&&r| r > 0 && r <= k).count();
+    hits as f64 / k as f64
+}
+
+/// Recall at k: fraction of relevant docs in top-k.
+///
+/// R@k = |relevant ∩ top-k| / |relevant|
+pub fn recall_at_k(ranks: &[usize], n_relevant: usize, k: usize) -> f64 {
+    if n_relevant == 0 {
+        return 0.0;
+    }
+    let hits = ranks.iter().filter(|&&r| r > 0 && r <= k).count();
+    hits as f64 / n_relevant as f64
+}
+
+/// Average Precision: average of precision at each relevant doc.
+///
+/// AP = (1/|R|) × Σᵢ (P@rankᵢ × 𝟙[rankᵢ exists])
+pub fn average_precision(ranks: &[usize], n_relevant: usize) -> f64 {
+    if n_relevant == 0 || ranks.is_empty() {
+        return 0.0;
+    }
+
+    let mut sorted_ranks = ranks.to_vec();
+    sorted_ranks.sort_unstable();
+
+    let mut sum = 0.0;
+    let mut hits = 0;
+
+    for &r in &sorted_ranks {
+        if r > 0 {
+            hits += 1;
+            sum += hits as f64 / r as f64;
+        }
+    }
+
+    sum / n_relevant as f64
+}
+
+/// F-measure at k: harmonic mean of precision and recall.
+pub fn f_measure_at_k(ranks: &[usize], n_relevant: usize, k: usize, beta: f64) -> f64 {
+    let p = precision_at_k(ranks, k);
+    let r = recall_at_k(ranks, n_relevant, k);
+
+    if p == 0.0 && r == 0.0 {
+        return 0.0;
+    }
+
+    let beta_sq = beta * beta;
+    (1.0 + beta_sq) * (p * r) / (beta_sq * p + r)
+}
+
+/// R-Precision: Precision at R, where R is the number of relevant documents.
+pub fn r_precision(ranks: &[usize], n_relevant: usize) -> f64 {
+    precision_at_k(ranks, n_relevant)
+}
+
+/// Expected Reciprocal Rank (ERR).
+///
+/// ERR models user behavior using a cascade model. For binary relevance,
+/// ERR reduces to Reciprocal Rank of the first relevant document.
+pub fn err_at_k(ranks: &[usize], k: usize) -> f64 {
+    if ranks.is_empty() {
+        return 0.0;
+    }
+
+    let mut p_stop = 1.0;
+    let mut err = 0.0;
+
+    let mut sorted_ranks = ranks.to_vec();
+    sorted_ranks.sort_unstable();
+
+    for &r in &sorted_ranks {
+        if r > 0 && r <= k {
+            let r_val = 1.0; // Binary relevance
+            err += p_stop * r_val / r as f64;
+            p_stop *= 1.0 - r_val;
+            if p_stop <= 0.0 {
+                break;
+            }
+        }
+    }
+
+    err
+}
+
+/// Rank-Biased Precision (RBP).
+///
+/// persistence: probability of user continuing to next rank (p).
+pub fn rbp_at_k(ranks: &[usize], k: usize, persistence: f64) -> f64 {
+    if persistence <= 0.0 || persistence >= 1.0 {
+        return 0.0;
+    }
+
+    let mut rbp = 0.0;
+    for &r in ranks {
+        if r > 0 && r <= k {
+            rbp += persistence.powi(r as i32 - 1);
+        }
+    }
+
+    (1.0 - persistence) * rbp
 }
 
 impl RankingMetrics {

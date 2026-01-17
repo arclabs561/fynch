@@ -3,11 +3,12 @@ name = "fynch"
 version = "0.1.0"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
-description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, soft operators"
+description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, and O(n log n) FastSoftSort"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/arclabs561/fynch"
+homepage = "https://github.com/arclabs561/fynch"
 documentation = "https://docs.rs/fynch"
-repository = "https://github.com/arclabs561/tekne"
-keywords = ["sorting", "ranking", "differentiable", "isotonic", "fenchel"]
+keywords = ["sorting", "ranking", "differentiable", "fenchel-young", "fastsoftsort"]
 categories = ["algorithms", "science", "mathematics"]
 
 [features]

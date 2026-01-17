@@ -409,6 +409,79 @@ pub fn soft_sort(x: &[f64], temperature: f64) -> Result<Vec<f64>> {
     sinkhorn::sinkhorn_sort(x, temperature)
 }
 
+/// Fast Differentiable Sorting ($O(n \log n)$).
+///
+/// Implements the algorithm from Blondel et al. (2020), "Fast Differentiable
+/// Sorting and Ranking". Unlike Sinkhorn ($O(n^2)$), this scales to large inputs.
+///
+/// The algorithm projects the input vector $\theta$ onto the permutahedron
+/// (the convex hull of all permutation matrices).
+///
+/// # Mathematical Details
+/// The projection is defined as:
+/// $P(\theta) = \text{argmin}_{w \in \Pi} \|w - \theta\|^2$
+/// where $\Pi$ is the permutahedron. Blondel et al. show this reduces to
+/// sorting $\theta$ and then solving an isotonic regression (PAVA) on the
+/// values $(\text{sorted\_}\theta - \rho)$ where $\rho$ is a target sequence.
+pub fn fast_soft_sort(x: &[f64], temperature: f64) -> Vec<f64> {
+    if x.is_empty() {
+        return vec![];
+    }
+    let n = x.len();
+
+    // 1. Get sorting permutation and sorted values
+    let mut indexed: Vec<(usize, f64)> = x.iter().copied().enumerate().collect();
+    indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
+    let (_indices, sorted): (Vec<usize>, Vec<f64>) = indexed.into_iter().unzip();
+
+    // 2. Define target values (rho) for the permutahedron projection
+    // For soft sorting, rho is typically [1, 2, ..., n]
+    let rho: Vec<f64> = (1..=n).map(|i| i as f64 * temperature).collect();
+
+    // 3. Compute PAVA on (sorted - rho)
+    let mut diff = Vec::with_capacity(n);
+    for i in 0..n {
+        diff.push(sorted[i] - rho[i]);
+    }
+    let v = pava(&diff);
+
+    // 4. The soft sorted values are (sorted - v)
+    // Note: This needs to be mapped back to original indices for ranking,
+    // but for "sorted values" we just return them.
+    let mut res = Vec::with_capacity(n);
+    for i in 0..n {
+        res.push(sorted[i] - v[i]);
+    }
+    res
+}
+
+/// Reciprocal Rank Fusion (RRF).
+///
+/// Combines multiple ranked lists into a single ranking using the formula:
+/// `RRFscore(d) = Σ_r 1 / (k + rank_r(d))`
+///
+/// # Arguments
+/// * `rankings` - A slice of ranked lists (each list is a Vec of doc IDs)
+/// * `k` - Hyperparameter (default 60 per Cormack et al.)
+pub fn reciprocal_rank_fusion<T: std::hash::Hash + Eq + Clone>(
+    rankings: &[Vec<T>],
+    k: usize,
+) -> Vec<(T, f64)> {
+    use std::collections::HashMap;
+    let mut scores = HashMap::new();
+
+    for ranking in rankings {
+        for (rank, id) in ranking.iter().enumerate() {
+            let score = 1.0 / (k as f64 + (rank + 1) as f64);
+            *scores.entry(id.clone()).or_insert(0.0) += score;
+        }
+    }
+
+    let mut fused: Vec<_> = scores.into_iter().collect();
+    fused.sort_by(|a, b| b.1.total_cmp(&a.1));
+    fused
+}
+
 /// Isotonic regression with L2 loss.
 ///
 /// Alias for [`pava`] with clearer naming.

@@ -32,7 +32,6 @@
 //! - Taylor et al. (2008). "SoftRank: Optimizing Non-smooth Rank Metrics"
 
 use crate::soft_rank;
-use crate::sigmoid;
 
 /// InfoNCE (Information Noise-Contrastive Estimation) Loss.
 /// 

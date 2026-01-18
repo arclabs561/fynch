@@ -19,10 +19,10 @@ simd = ["dep:innr"]
 gumbel = ["dep:kuji", "dep:rand"]
 
 [dependencies]
-thiserror = { workspace = true }
+thiserror = "2.0"
 logp = "0.1.0"
-serde = { workspace = true }
-rand = { workspace = true, optional = true }
+serde = { version = "1.0", features = ["derive"] }
+rand = { version = "0.9", optional = true }
 
 # Optional: SIMD primitives
 innr = { version = "0.1.0", optional = true }
@@ -32,8 +32,8 @@ kuji = { version = "0.1.0", optional = true }
 [dev-dependencies]
 approx = "0.5"
 criterion = { version = "0.5", features = ["html_reports"] }
-proptest = { workspace = true }
-rand = { workspace = true }
+proptest = "1.5"
+rand = "0.9"
 serde_json = "1.0"
 
 [[bench]]

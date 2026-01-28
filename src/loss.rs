@@ -34,19 +34,22 @@
 use crate::soft_rank;
 
 /// InfoNCE (Information Noise-Contrastive Estimation) Loss.
-/// 
+///
 /// L = -log( exp(pos / tau) / sum(exp(all / tau)) )
 pub fn info_nce_loss(pos_score: f64, neg_scores: &[f64], temperature: f64) -> f64 {
     let pos = pos_score / temperature;
-    
+
     let mut max_score = pos;
     for &s in neg_scores {
         max_score = max_score.max(s / temperature);
     }
-    
-    let sum_exp = (pos - max_score).exp() + 
-        neg_scores.iter().map(|&s| (s / temperature - max_score).exp()).sum::<f64>();
-    
+
+    let sum_exp = (pos - max_score).exp()
+        + neg_scores
+            .iter()
+            .map(|&s| (s / temperature - max_score).exp())
+            .sum::<f64>();
+
     -(pos - max_score - sum_exp.ln())
 }
 
@@ -151,18 +154,17 @@ pub fn listnet_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
     if n == 0 || n != targets.len() {
         return f64::INFINITY;
     }
+    if temperature <= 0.0 || !temperature.is_finite() {
+        return f64::INFINITY;
+    }
 
-    let pred_ranks = match soft_rank(predictions, temperature) {
-        Ok(r) => r,
-        Err(_) => return f64::INFINITY,
-    };
-    let target_ranks = match soft_rank(targets, temperature) {
-        Ok(r) => r,
-        Err(_) => return f64::INFINITY,
-    };
-
-    let pred_probs = softmax(&pred_ranks);
-    let target_probs = softmax(&target_ranks);
+    // ListNet (top-one) is naturally defined over scores (not ranks):
+    // it builds a distribution over items via softmax(scores / τ) and matches them.
+    //
+    // Using ranks here is subtle and easy to get wrong because our `soft_rank`
+    // is 1-indexed with "better = smaller rank". Softmax would invert semantics.
+    let pred_probs = softmax_temp(predictions, temperature);
+    let target_probs = softmax_temp(targets, temperature);
 
     let mut loss = 0.0;
     for i in 0..n {
@@ -204,6 +206,9 @@ pub fn listmle_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
     if n == 0 || n != targets.len() {
         return f64::INFINITY;
     }
+    if temperature <= 0.0 || !temperature.is_finite() {
+        return f64::INFINITY;
+    }
 
     // Get target ranking order (descending by target score)
     let mut target_order: Vec<usize> = (0..n).collect();
@@ -213,22 +218,23 @@ pub fn listmle_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Use soft ranks for differentiability
-    let pred_ranks = match soft_rank(predictions, temperature) {
-        Ok(r) => r,
-        Err(_) => return f64::INFINITY,
-    };
+    // ListMLE is defined on scores: it models a distribution over permutations
+    // induced by sequential Plackett–Luce choices (exp(score)).
+    //
+    // We scale by temperature to control sharpness:
+    // smaller temperature => sharper, closer to hard permutation likelihood.
+    let scaled_scores: Vec<f64> = predictions.iter().map(|&s| s / temperature).collect();
 
     // ListMLE: log-likelihood of selecting items in target order
     let mut loss = 0.0;
     for i in 0..n {
         let idx = target_order[i];
-        let score = pred_ranks[idx];
+        let score = scaled_scores[idx];
 
         // Denominator: sum over remaining items
         let mut log_denom = f64::NEG_INFINITY;
         for &jdx in target_order.iter().skip(i) {
-            log_denom = log_sum_exp(log_denom, pred_ranks[jdx]);
+            log_denom = log_sum_exp(log_denom, scaled_scores[jdx]);
         }
 
         loss -= score - log_denom;
@@ -238,7 +244,7 @@ pub fn listmle_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
 
 /// Pairwise margin ranking loss.
 ///
-/// For each pair where target[i] > target[j], penalize if pred[i] < pred[j].
+/// For each pair where target\[i\] > target\[j\], penalize if pred\[i\] < pred\[j\].
 ///
 /// ```text
 /// Loss = Σ_{i,j: t_i > t_j} max(0, margin - (s_i - s_j))
@@ -289,9 +295,12 @@ pub fn pairwise_margin_loss(predictions: &[f64], targets: &[f64], margin: f64) -
 
 // Helper functions
 
-fn softmax(x: &[f64]) -> Vec<f64> {
-    let max = x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-    let exps: Vec<f64> = x.iter().map(|&v| (v - max).exp()).collect();
+fn softmax_temp(x: &[f64], temperature: f64) -> Vec<f64> {
+    debug_assert!(temperature > 0.0 && temperature.is_finite());
+    let max = x
+        .iter()
+        .fold(f64::NEG_INFINITY, |a, &b| a.max(b / temperature));
+    let exps: Vec<f64> = x.iter().map(|&v| ((v / temperature) - max).exp()).collect();
     let sum: f64 = exps.iter().sum();
     exps.iter().map(|&e| e / sum).collect()
 }
@@ -347,11 +356,34 @@ mod tests {
     }
 
     #[test]
+    fn test_listnet_prefers_correct_order() {
+        // Same ordering => lower cross-entropy between induced distributions.
+        let target = [3.0, 2.0, 1.0, 0.0];
+        let pred_good = [30.0, 20.0, 10.0, 0.0];
+        let pred_bad = [0.0, 10.0, 20.0, 30.0];
+
+        let good = listnet_loss(&pred_good, &target, 1.0);
+        let bad = listnet_loss(&pred_bad, &target, 1.0);
+        assert!(good < bad, "good={} bad={}", good, bad);
+    }
+
+    #[test]
     fn test_listmle_basic() {
         let pred = [0.9, 0.1, 0.5];
         let target = [3.0, 1.0, 2.0];
         let loss = listmle_loss(&pred, &target, 0.1);
         assert!(loss.is_finite());
+    }
+
+    #[test]
+    fn test_listmle_prefers_correct_order() {
+        let target = [3.0, 2.0, 1.0, 0.0];
+        let pred_good = [3.0, 2.0, 1.0, 0.0];
+        let pred_bad = [0.0, 1.0, 2.0, 3.0];
+
+        let good = listmle_loss(&pred_good, &target, 1.0);
+        let bad = listmle_loss(&pred_bad, &target, 1.0);
+        assert!(good < bad, "good={} bad={}", good, bad);
     }
 
     #[test]

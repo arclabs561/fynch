@@ -39,8 +39,8 @@ use crate::soft_rank;
 /// # Returns
 ///
 /// Tuple of (weighted_values, indicators) where:
-/// - `weighted_values[i]` = values[i] * indicator[i]
-/// - `indicators[i]` ∈ (0, 1) indicates soft membership in top-k
+/// - `weighted_values[i]` = values\[i\] * indicator\[i\]
+/// - `indicators\[i\]` ∈ (0, 1) indicates soft membership in top-k
 ///
 /// # Example
 ///

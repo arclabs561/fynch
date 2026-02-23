@@ -7,6 +7,13 @@ Dual-licensed under MIT or Apache-2.0.
 
 [crates.io](https://crates.io/crates/fynch) | [docs.rs](https://docs.rs/fynch)
 
+## Quickstart
+
+```toml
+[dependencies]
+fynch = "0.1.0"
+```
+
 ```rust
 use fynch::{entmax, pava, soft_rank};
 

@@ -438,7 +438,9 @@ mod tests {
         ) {
             let loss1 = info_nce_loss(pos1, &negs, temp);
             let loss2 = info_nce_loss(pos2, &negs, temp);
-            prop_assert!(loss2 < loss1);
+            // If `pos1 == pos2` (possible at 0.0 due to inclusive ranges),
+            // the loss can be equal. Also allow tiny numerical noise.
+            prop_assert!(loss2 <= loss1 + 1e-12);
         }
     }
 }

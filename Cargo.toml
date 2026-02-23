@@ -10,6 +10,7 @@ homepage = "https://github.com/arclabs561/fynch"
 documentation = "https://docs.rs/fynch"
 keywords = ["sorting", "ranking", "differentiable", "fenchel-young", "fastsoftsort"]
 categories = ["algorithms", "science", "mathematics"]
+publish = true
 
 [features]
 default = []

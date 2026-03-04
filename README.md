@@ -1,5 +1,9 @@
 # fynch
 
+[![crates.io](https://img.shields.io/crates/v/fynch.svg)](https://crates.io/crates/fynch)
+[![Documentation](https://docs.rs/fynch/badge.svg)](https://docs.rs/fynch)
+[![CI](https://github.com/arclabs561/fynch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/fynch/actions/workflows/ci.yml)
+
 Differentiable sorting and ranking primitives for structured prediction and isotonic regression.
 Implements PAVA, Fenchel-Young losses, and entropy-regularized operators.
 

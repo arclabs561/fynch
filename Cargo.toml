@@ -1,6 +1,6 @@
 [package]
 name = "fynch"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, and O(n log n) FastSoftSort"

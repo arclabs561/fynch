@@ -226,7 +226,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "fynch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "criterion",
@@ -896,4 +896,4 @@ checksum = "bd8f3f50b848df28f887acb68e41201b5aea6bc8a8dacc00fb40635ff9a72fea"
 
 [[patch.unused]]
 name = "textprep"
-version = "0.1.0"
+version = "0.1.2"

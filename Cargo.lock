@@ -24,6 +24,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5192cca8006f1fd4f7237516f40fa183bb07f8fbdfedaa0036de5ea9b0b45e78"
 
 [[package]]
+name = "anyhow"
+version = "1.0.102"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -235,8 +241,20 @@ dependencies = [
  "logp",
  "proptest",
  "rand",
+ "rankit",
  "serde",
  "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "fynch"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1992e1cdfa5485b72151b099523d79a9a701c783b5edff4ffa8fb158224a8edd"
+dependencies = [
+ "logp",
+ "serde",
  "thiserror",
 ]
 
@@ -549,6 +567,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
 dependencies = [
  "rand_core",
+]
+
+[[package]]
+name = "rankit"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "899ff7fa314afb2ca713888f1a9ff4cf748fea01dfe5887dfec003d621e90700"
+dependencies = [
+ "anyhow",
+ "fynch 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
 ]
 
 [[package]]

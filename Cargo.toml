@@ -28,7 +28,7 @@ rand = { version = "0.9", optional = true }
 # Optional: SIMD primitives
 innr = { version = "0.1.8", optional = true }
 # Optional: Stochastic sampling
-kuji = { version = "0.1.0", optional = true }
+kuji = { version = "0.1.7", optional = true }
 
 [dev-dependencies]
 approx = "0.5"

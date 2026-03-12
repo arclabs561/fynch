@@ -21,12 +21,12 @@ gumbel = ["dep:kuji", "dep:rand"]
 
 [dependencies]
 thiserror = "2.0"
-logp = "0.1.0"
+logp = "0.1.3"
 serde = { version = "1.0", features = ["derive"] }
 rand = { version = "0.9", optional = true }
 
 # Optional: SIMD primitives
-innr = { version = "0.1.0", optional = true }
+innr = { version = "0.1.8", optional = true }
 # Optional: Stochastic sampling
 kuji = { version = "0.1.0", optional = true }
 

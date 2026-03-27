@@ -39,6 +39,7 @@
 //! |----------|--------|---------------|------------|
 //! | PAVA + Sigmoid | Root | L2 | O(n) / O(n²) |
 //! | Sinkhorn OT | [`sinkhorn`] | Entropy (Shannon Ω) | O(n² × iter) |
+//! | LapSum | [`lapsum`] | Laplacian kernel | O(n² + n log n) |
 //!
 //! Sinkhorn sorting is exactly FY with Shannon regularization applied to
 //! the permutation polytope (Birkhoff polytope).
@@ -53,6 +54,9 @@
 //! | [`fenchel::softmax`] | Dense prediction | [`fenchel`] |
 //! | [`fenchel::sparsemax`] | Sparse prediction | [`fenchel`] |
 //! | [`fenchel::entmax`] | Tunable sparsity | [`fenchel`] |
+//! | [`lapsum_sort`] | Laplacian soft sort | [`lapsum`] |
+//! | [`lapsum_rank`] | Laplacian soft rank | [`lapsum`] |
+//! | [`lapsum_topk`] | Laplacian soft top-k | [`lapsum`] |
 //!
 //! ## Quick Start
 //!
@@ -123,6 +127,7 @@
 //! |--------|----------|
 //! | [`fenchel`] | Generic FY framework: regularizers, predictions, losses |
 //! | [`sinkhorn`] | Entropic OT for soft permutations |
+//! | [`lapsum`] | LapSum unified sort/rank/top-k |
 //! | [`loss`] | Learning-to-rank losses |
 //! | [`metrics`] | IR evaluation: MRR, NDCG, Hits@k |
 //!
@@ -148,6 +153,7 @@
 
 pub mod curvature;
 pub mod fenchel;
+pub mod lapsum;
 pub mod loss;
 pub mod metrics;
 pub mod sigmoid;
@@ -168,6 +174,8 @@ pub use topk::{
     differentiable_bottomk, differentiable_topk, sparse_topk, sparse_topk_matrix, topk_ce_loss,
     topk_cross_entropy_loss,
 };
+
+pub use lapsum::{lapsum_permutation, lapsum_rank, lapsum_sort, lapsum_topk};
 
 #[derive(Debug, Error)]
 pub enum Error {

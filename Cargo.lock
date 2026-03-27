@@ -238,7 +238,7 @@ dependencies = [
  "criterion",
  "innr",
  "kuji",
- "logp",
+ "logp 0.2.0",
  "proptest",
  "rand",
  "rankit",
@@ -253,7 +253,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1992e1cdfa5485b72151b099523d79a9a701c783b5edff4ffa8fb158224a8edd"
 dependencies = [
- "logp",
+ "logp 0.1.0",
  "serde",
  "thiserror",
 ]
@@ -289,9 +289,9 @@ checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
 name = "innr"
-version = "0.1.0"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2735d55bf01c82ad71ec0118bbb6e24e84d15414e35020cfe8c9d22c67ae581f"
+checksum = "f75d0b29074c87add080dab7566c3a11854cd90a315af73fa5537b4643234142"
 
 [[package]]
 name = "is-terminal"
@@ -331,9 +331,9 @@ dependencies = [
 
 [[package]]
 name = "kuji"
-version = "0.1.0"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "591d0c77f6df8ae4d6c05541cdeeac993b1ecccb9b910a79768208c454f16791"
+checksum = "5daa038efc57d10c465024427963cf855cf620db51401c009f104fdbb1e03f99"
 dependencies = [
  "rand",
 ]
@@ -357,6 +357,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e987f585a288705e7e9ab2f7cea5fcfe67c5fffe8d581d8b48a4d5504a032bd"
 dependencies = [
  "ndarray",
+ "thiserror",
+]
+
+[[package]]
+name = "logp"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ae0163d54058a2d926d9b051600c43e5b461b2ac35b7d5ccf38adc9b7d3e093"
+dependencies = [
  "thiserror",
 ]
 
@@ -925,4 +934,4 @@ checksum = "bd8f3f50b848df28f887acb68e41201b5aea6bc8a8dacc00fb40635ff9a72fea"
 
 [[patch.unused]]
 name = "textprep"
-version = "0.1.2"
+version = "0.1.4"

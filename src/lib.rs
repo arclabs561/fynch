@@ -146,11 +146,13 @@
 //! - Blondel et al. (2020). "Fast Differentiable Sorting and Ranking"
 //! - Cuturi et al. (2019). "Differentiable Ranking via Optimal Transport"
 
+pub mod curvature;
 pub mod fenchel;
 pub mod loss;
 pub mod metrics;
 pub mod sigmoid;
 pub mod sinkhorn;
+pub mod sorting_network;
 pub mod topk;
 
 use thiserror::Error;
@@ -162,7 +164,10 @@ pub use fenchel::{
 pub use metrics::{compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics};
 pub use sigmoid::{sigmoid, sigmoid_derivative};
 pub use sinkhorn::{sinkhorn_rank, sinkhorn_sort, SinkhornConfig};
-pub use topk::{differentiable_bottomk, differentiable_topk};
+pub use topk::{
+    differentiable_bottomk, differentiable_topk, sparse_topk, sparse_topk_matrix, topk_ce_loss,
+    topk_cross_entropy_loss,
+};
 
 #[derive(Debug, Error)]
 pub enum Error {

@@ -176,8 +176,12 @@ pub use topk::{
 };
 
 pub use lapsum::{lapsum_permutation, lapsum_rank, lapsum_sort, lapsum_topk};
+pub use sorting_network::{
+    bitonic_sort, odd_even_sort, ranks_from_permutation, DiffSortNet, NetworkType, RelaxDist,
+};
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum Error {
     #[error("empty input")]
     EmptyInput,

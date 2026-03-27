@@ -5,10 +5,10 @@
 //!
 //! # Algorithm
 //!
-//! Given scores `s = [s_1, ..., s_n]` and temperature `sigma > 0`:
+//! Given scores `s = [s_1, ..., s_n]` and `temperature > 0`:
 //!
 //! 1. Compute pairwise absolute differences `|s_i - s_j|`
-//! 2. Apply Laplacian kernel: `A_ij = exp(-|s_i - s_j| / sigma)`
+//! 2. Apply Laplacian kernel: `A_ij = exp(-|s_i - s_j| / temperature)`
 //! 3. Row-normalize: `P_ij = A_ij / sum_k A_ik`
 //!
 //! The resulting `P` is a soft permutation matrix (doubly-stochastic in
@@ -24,8 +24,8 @@
 //!
 //! # Temperature Behavior
 //!
-//! - `sigma -> 0`: converges to hard permutation (exact sort/rank)
-//! - `sigma -> inf`: uniform matrix (no discrimination)
+//! - `temperature -> 0`: converges to hard permutation (exact sort/rank)
+//! - `temperature -> inf`: uniform matrix (no discrimination)
 //!
 //! # References
 //!
@@ -46,18 +46,18 @@ use crate::{Error, Result};
 /// # Arguments
 ///
 /// * `scores` - Input scores to sort
-/// * `sigma` - Temperature controlling smoothness (must be positive)
+/// * `temperature` - Temperature controlling smoothness (must be positive)
 ///
 /// # Errors
 ///
 /// Returns [`Error::EmptyInput`] for empty input, or
-/// [`Error::InvalidTemperature`] if `sigma <= 0`.
-pub fn lapsum_permutation(scores: &[f64], sigma: f64) -> Result<Vec<f64>> {
+/// [`Error::InvalidTemperature`] if `temperature <= 0`.
+pub fn lapsum_permutation(scores: &[f64], temperature: f64) -> Result<Vec<f64>> {
     if scores.is_empty() {
         return Err(Error::EmptyInput);
     }
-    if sigma <= 0.0 {
-        return Err(Error::InvalidTemperature(sigma));
+    if temperature <= 0.0 {
+        return Err(Error::InvalidTemperature(temperature));
     }
 
     let n = scores.len();
@@ -67,9 +67,9 @@ pub fn lapsum_permutation(scores: &[f64], sigma: f64) -> Result<Vec<f64>> {
     let mut indexed: Vec<(usize, f64)> = scores.iter().copied().enumerate().collect();
     indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
 
-    // Build kernel matrix: A[pos][orig] = exp(-|sorted_score[pos] - score[orig]| / sigma)
+    // Build kernel matrix: A[pos][orig] = exp(-|sorted_score[pos] - score[orig]| / temperature)
     // Then row-normalize to get P.
-    let inv_sigma = 1.0 / sigma;
+    let inv_sigma = 1.0 / temperature;
     let mut perm = vec![0.0_f64; n * n];
 
     for (pos, &(_, sorted_val)) in indexed.iter().enumerate() {
@@ -97,22 +97,22 @@ pub fn lapsum_permutation(scores: &[f64], sigma: f64) -> Result<Vec<f64>> {
 /// LapSum sort: apply the soft permutation to values.
 ///
 /// Computes `P * values` where `P` is the LapSum permutation matrix.
-/// At low `sigma`, this approximates hard sorting.
+/// At low `temperature`, this approximates hard sorting.
 ///
 /// # Arguments
 ///
 /// * `scores` - Scores determining the sort order
 /// * `values` - Values to be sorted (must have same length as `scores`)
-/// * `sigma` - Temperature
+/// * `temperature` - Temperature
 ///
 /// # Errors
 ///
 /// Returns [`Error::LengthMismatch`] if `scores` and `values` differ in length.
-pub fn lapsum_sort(scores: &[f64], values: &[f64], sigma: f64) -> Result<Vec<f64>> {
+pub fn lapsum_sort(scores: &[f64], values: &[f64], temperature: f64) -> Result<Vec<f64>> {
     if scores.len() != values.len() {
         return Err(Error::LengthMismatch(scores.len(), values.len()));
     }
-    let perm = lapsum_permutation(scores, sigma)?;
+    let perm = lapsum_permutation(scores, temperature)?;
     let n = scores.len();
 
     // Matrix-vector multiply: result[i] = sum_j P[i][j] * values[j]
@@ -137,9 +137,9 @@ pub fn lapsum_sort(scores: &[f64], values: &[f64], sigma: f64) -> Result<Vec<f64
 /// # Arguments
 ///
 /// * `scores` - Input scores
-/// * `sigma` - Temperature
-pub fn lapsum_rank(scores: &[f64], sigma: f64) -> Result<Vec<f64>> {
-    let perm = lapsum_permutation(scores, sigma)?;
+/// * `temperature` - Temperature
+pub fn lapsum_rank(scores: &[f64], temperature: f64) -> Result<Vec<f64>> {
+    let perm = lapsum_permutation(scores, temperature)?;
     let n = scores.len();
 
     // rank[j] = sum_i P[i][j] * (i + 1)
@@ -167,17 +167,17 @@ pub fn lapsum_rank(scores: &[f64], sigma: f64) -> Result<Vec<f64>> {
 ///
 /// * `scores` - Input scores
 /// * `k` - Number of top elements to select
-/// * `sigma` - Temperature
+/// * `temperature` - Temperature
 ///
 /// # Errors
 ///
 /// Returns [`Error::EmptyInput`] if `k == 0` or `k > n`.
-pub fn lapsum_topk(scores: &[f64], k: usize, sigma: f64) -> Result<Vec<f64>> {
+pub fn lapsum_topk(scores: &[f64], k: usize, temperature: f64) -> Result<Vec<f64>> {
     let n = scores.len();
     if k == 0 || k > n {
         return Err(Error::EmptyInput);
     }
-    let perm = lapsum_permutation(scores, sigma)?;
+    let perm = lapsum_permutation(scores, temperature)?;
 
     // Sum the last k rows (positions n-k..n correspond to the k largest).
     let mut weights = vec![0.0; n];

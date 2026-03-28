@@ -4,8 +4,7 @@
 [![Documentation](https://docs.rs/fynch/badge.svg)](https://docs.rs/fynch)
 [![CI](https://github.com/arclabs561/fynch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/fynch/actions/workflows/ci.yml)
 
-Differentiable sorting and ranking primitives for structured prediction and isotonic regression.
-Implements PAVA, Fenchel-Young losses, and entropy-regularized operators.
+Differentiable sorting and ranking.
 
 Dual-licensed under MIT or Apache-2.0.
 

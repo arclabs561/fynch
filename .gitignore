@@ -6,3 +6,4 @@ Cargo.lock
 .cursor/
 .DS_Store
 proptest-regressions/
+*.proptest-regressions

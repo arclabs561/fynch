@@ -33,7 +33,7 @@
 
 use crate::sigmoid::sigmoid;
 use crate::soft_rank;
-use crate::sorting_network::{DiffSortNet, NetworkType, RelaxDist};
+use crate::sorting_network::{relaxed_sigmoid, DiffSortNet, NetworkType, RelaxDist};
 use crate::{Error, Result};
 
 /// Differentiable Top-K selection (k largest values).
@@ -177,37 +177,6 @@ pub fn differentiable_bottomk(values: &[f64], k: usize, temperature: f64) -> (Ve
 // Sorting-network-based sparse top-k (Petersen et al., ICML 2022)
 // ============================================================================
 
-/// Relaxed sigmoid for comparator (matches sorting_network module).
-fn relaxed_sigmoid(x: f64, dist: RelaxDist) -> f64 {
-    match dist {
-        RelaxDist::Logistic => {
-            if x > 500.0 {
-                1.0
-            } else if x < -500.0 {
-                0.0
-            } else {
-                1.0 / (1.0 + (-x).exp())
-            }
-        }
-        RelaxDist::Cauchy => 0.5 + x.atan() / std::f64::consts::PI,
-        RelaxDist::Gaussian => 0.5 * (1.0 + erf_approx(x / std::f64::consts::SQRT_2)),
-    }
-}
-
-/// Error function approximation (matches sorting_network module).
-fn erf_approx(x: f64) -> f64 {
-    let sign = if x >= 0.0 { 1.0 } else { -1.0 };
-    let x = x.abs();
-    let t = 1.0 / (1.0 + 0.327_591_1 * x);
-    let t2 = t * t;
-    let t3 = t2 * t;
-    let t4 = t3 * t;
-    let t5 = t4 * t;
-    let poly = 0.254_829_592 * t - 0.284_496_736 * t2 + 1.421_413_741 * t3 - 1.453_152_027 * t4
-        + 1.061_405_429 * t5;
-    sign * (1.0 - poly * (-x * x).exp())
-}
-
 /// Sparse top-k attribution matrix via differentiable sorting networks.
 ///
 /// Given n input scores, produces an n x k matrix A where `A[i][j]` is
@@ -314,6 +283,7 @@ pub fn sparse_topk_matrix(
     // After ascending sort, the last k positions hold the k largest values.
     // X is padded_n x k.
     let mut x = vec![vec![0.0; k]; padded_n];
+    #[allow(clippy::needless_range_loop)] // j indexes both col computation and inner vec
     for j in 0..k {
         let col = padded_n - k + j;
         x[col][j] = 1.0;
@@ -329,6 +299,7 @@ pub fn sparse_topk_matrix(
     //   in_b = alpha * out_a + (1 - alpha) * out_b
     for (idx, &(a, b)) in comparators.iter().enumerate().rev() {
         let alpha = alphas[idx];
+        #[allow(clippy::needless_range_loop)] // two mutable rows from the same Vec
         for j in 0..k {
             let xa = x[a][j];
             let xb = x[b][j];
@@ -466,12 +437,12 @@ pub fn topk_cross_entropy_loss(
     // Convention: column k-1 = rank 1 (largest), column 0 = rank k.
     // "Being in top-j" means having weight in the last j columns = columns k-j..k-1.
     let start_j = if use_softmax_top1 { 1 } else { 0 };
-    for j in start_j..k {
+    for (j, &p_k_j) in p_k.iter().enumerate().take(k).skip(start_j) {
         // p_k[j] weights rank j+1. "In top-(j+1)" = sum of last (j+1) columns.
         let first_col = k - (j + 1);
         for i in 0..n {
             let cumulative: f64 = attr[i][first_col..].iter().sum();
-            topk_dist[i] += p_k[j] * cumulative;
+            topk_dist[i] += p_k_j * cumulative;
         }
     }
 
@@ -524,7 +495,7 @@ pub mod gumbel {
     /// // noise follows Gumbel(0, 1) distribution
     /// ```
     pub fn gumbel_noise<R: Rng + ?Sized>(rng: &mut R) -> f64 {
-        let u: f64 = rng.gen_range(0.0..1.0);
+        let u: f64 = rng.random_range(0.0..1.0);
         let u = u.clamp(1e-10, 1.0 - 1e-10);
         -(-u.ln()).ln()
     }

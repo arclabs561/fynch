@@ -97,6 +97,13 @@ impl Default for SinkhornConfig {
 /// Given input values, computes a doubly-stochastic matrix P such that
 /// P @ sorted_positions gives soft ranks.
 ///
+/// # Convergence
+///
+/// This function does not expose the iteration count or convergence residual.
+/// It runs until `config.tol` is satisfied or `config.max_iter` is reached,
+/// with no indication of which occurred. If you need to observe convergence,
+/// reimplement the iteration loop with logging.
+///
 /// # Algorithm
 ///
 /// 1. Standardize inputs: z_i = (x_i - mean(x)) / std(x)

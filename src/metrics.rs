@@ -151,6 +151,8 @@ pub fn mean_rank(ranks: &[usize]) -> f64 {
 /// Measures ranking quality with position-weighted relevance.
 /// Unlike Hits@k, NDCG considers graded relevance (not just binary).
 ///
+/// Uses the Jarvelin & Kekalainen (2002) DCG formulation: `rel / log2(position + 1)`.
+///
 /// # Formula
 ///
 /// ```text

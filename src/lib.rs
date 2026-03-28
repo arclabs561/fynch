@@ -502,6 +502,7 @@ pub fn reciprocal_rank_fusion<T: std::hash::Hash + Eq + Clone>(
 /// Isotonic regression with L2 loss.
 ///
 /// Alias for [`pava`] with clearer naming.
+#[deprecated(since = "0.1.2", note = "use pava instead")]
 pub fn isotonic_l2(y: &[f64]) -> Vec<f64> {
     pava(y)
 }

@@ -740,6 +740,7 @@ mod tests {
         let a = sparse_topk_matrix(&scores, k, 20.0, NetworkType::Bitonic, RelaxDist::Logistic)
             .unwrap();
         let n = scores.len();
+        #[allow(clippy::needless_range_loop)] // j indexes columns across rows
         for j in 0..k {
             let col_sum: f64 = (0..n).map(|i| a[i][j]).sum();
             assert!(

@@ -14,7 +14,7 @@ proptest! {
     ) {
         // Generate values from index to ensure variety
         let x: Vec<f64> = (0..len).map(|i| ((i * 7 + 3) % len) as f64).collect();
-        let padded_len = len.next_power_of_two();
+        let _padded_len = len.next_power_of_two();
         let net = DiffSortNet::new(NetworkType::Bitonic, len, steepness, RelaxDist::Logistic);
         let (sorted, _) = net.sort(&x).unwrap();
 
@@ -53,6 +53,7 @@ proptest! {
         let (_, perm) = bitonic_sort(&x, 20.0).unwrap();
 
         let n = perm.len();
+        #[allow(clippy::needless_range_loop)] // j indexes columns across rows
         for j in 0..n {
             let col_sum: f64 = (0..n).map(|i| perm[i][j]).sum();
             prop_assert!(

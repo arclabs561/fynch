@@ -493,7 +493,7 @@ mod tests {
 
         // All ranks should be in [1, n] range
         for &r in &ranks {
-            assert!(r >= 0.5 && r <= 4.5, "Rank out of range: {r}");
+            assert!((0.5..=4.5).contains(&r), "Rank out of range: {r}");
         }
     }
 
@@ -553,6 +553,7 @@ mod tests {
         let (_, perm) = bitonic_sort(&x, 20.0).unwrap();
 
         let n = perm.len();
+        #[allow(clippy::needless_range_loop)] // j indexes columns across rows
         for j in 0..n {
             let col_sum: f64 = (0..n).map(|i| perm[i][j]).sum();
             assert!(

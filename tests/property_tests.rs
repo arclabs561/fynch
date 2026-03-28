@@ -251,7 +251,7 @@ proptest! {
         for (i, row) in perm.iter().enumerate() {
             for (j, &val) in row.iter().enumerate() {
                 prop_assert!(
-                    val >= -0.01 && val <= 1.01,
+                    (-0.01..=1.01).contains(&val),
                     "perm[{i}][{j}] = {val} out of [0,1]"
                 );
             }
@@ -300,9 +300,9 @@ proptest! {
         let x: Vec<f64> = (0..len).map(|i| i as f64).collect();
         let (_, perm) = bitonic_sort(&x, 50.0).unwrap();
 
-        for i in 0..len {
+        for (i, row) in perm.iter().enumerate().take(len) {
             prop_assert!(
-                perm[i][i] > 0.7,
+                row[i] > 0.7,
                 "Diagonal perm[{i}][{i}] = {} should be near 1.0 for sorted input",
                 perm[i][i]
             );
@@ -322,13 +322,14 @@ proptest! {
             let (_, perm) = net.sort(&x).unwrap();
             let n = perm.len();
 
-            for i in 0..n {
-                let row_sum: f64 = perm[i].iter().sum();
+            for (i, row) in perm.iter().enumerate() {
+                let row_sum: f64 = row.iter().sum();
                 prop_assert!(
                     (row_sum - 1.0).abs() < 0.15,
                     "{dist:?}: row {i} sum = {row_sum}"
                 );
             }
+            #[allow(clippy::needless_range_loop)] // j indexes columns across rows
             for j in 0..n {
                 let col_sum: f64 = (0..n).map(|i| perm[i][j]).sum();
                 prop_assert!(
@@ -375,6 +376,7 @@ proptest! {
         let a = sparse_topk_matrix(&scores, k, 20.0, NetworkType::OddEven, RelaxDist::Logistic)
             .unwrap();
 
+        #[allow(clippy::needless_range_loop)] // j indexes columns across rows
         for j in 0..k {
             let col_sum: f64 = (0..n).map(|i| a[i][j]).sum();
             prop_assert!(
@@ -469,16 +471,16 @@ proptest! {
             .unwrap();
 
         // Last k elements (highest scores) should have high row sums
-        for i in (n - k)..n {
-            let row_sum: f64 = a[i].iter().sum();
+        for (i, row) in a.iter().enumerate().skip(n - k) {
+            let row_sum: f64 = row.iter().sum();
             prop_assert!(
                 row_sum > 0.7,
                 "Sorted top-k element {i} row sum = {row_sum}"
             );
         }
         // First n-k elements should have low row sums
-        for i in 0..(n - k) {
-            let row_sum: f64 = a[i].iter().sum();
+        for (i, row) in a.iter().enumerate().take(n - k) {
+            let row_sum: f64 = row.iter().sum();
             prop_assert!(
                 row_sum < 0.3,
                 "Sorted non-top-k element {i} row sum = {row_sum}"
@@ -539,6 +541,7 @@ proptest! {
             prop_assert_eq!(row.len(), k);
         }
         // Column sums ~1
+        #[allow(clippy::needless_range_loop)] // j indexes columns across rows
         for j in 0..k {
             let col_sum: f64 = (0..n).map(|i| a[i][j]).sum();
             prop_assert!(
@@ -566,7 +569,7 @@ proptest! {
         let (_, indicators) = differentiable_topk(&values, k, 0.1);
         for (i, &ind) in indicators.iter().enumerate() {
             prop_assert!(
-                ind >= -1e-10 && ind <= 1.0 + 1e-10,
+                (-1e-10..=1.0 + 1e-10).contains(&ind),
                 "indicator[{i}] = {ind} out of [0,1]"
             );
         }
@@ -582,7 +585,7 @@ proptest! {
         let (_, indicators) = differentiable_bottomk(&values, k, 0.1);
         for (i, &ind) in indicators.iter().enumerate() {
             prop_assert!(
-                ind >= -1e-10 && ind <= 1.0 + 1e-10,
+                (-1e-10..=1.0 + 1e-10).contains(&ind),
                 "bottomk indicator[{i}] = {ind} out of [0,1]"
             );
         }

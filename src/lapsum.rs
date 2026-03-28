@@ -117,10 +117,10 @@ pub fn lapsum_sort(scores: &[f64], values: &[f64], temperature: f64) -> Result<V
 
     // Matrix-vector multiply: result[i] = sum_j P[i][j] * values[j]
     let mut result = vec![0.0; n];
-    for i in 0..n {
+    for (i, res) in result.iter_mut().enumerate().take(n) {
         let row_start = i * n;
         for j in 0..n {
-            result[i] += perm[row_start + j] * values[j];
+            *res += perm[row_start + j] * values[j];
         }
     }
     Ok(result)

@@ -178,6 +178,7 @@ impl DiffSortNet {
 
         // Update permutation rows
         let n = perm[0].len();
+        #[allow(clippy::needless_range_loop)] // two mutable rows from the same Vec
         for k in 0..n {
             let pa = perm[a][k];
             let pb = perm[b][k];
@@ -220,7 +221,7 @@ impl DiffSortNet {
 }
 
 /// Relaxed sigmoid for the comparator.
-fn relaxed_sigmoid(x: f64, dist: RelaxDist) -> f64 {
+pub(crate) fn relaxed_sigmoid(x: f64, dist: RelaxDist) -> f64 {
     match dist {
         RelaxDist::Logistic => {
             // Standard logistic sigmoid with numerical stability
@@ -244,7 +245,7 @@ fn relaxed_sigmoid(x: f64, dist: RelaxDist) -> f64 {
 }
 
 /// Error function approximation.
-fn erf_approx(x: f64) -> f64 {
+pub(crate) fn erf_approx(x: f64) -> f64 {
     let sign = if x >= 0.0 { 1.0 } else { -1.0 };
     let x = x.abs();
     let t = 1.0 / (1.0 + 0.327_591_1 * x);

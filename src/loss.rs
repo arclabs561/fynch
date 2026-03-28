@@ -87,16 +87,16 @@ pub fn info_nce_loss(pos_score: f64, neg_scores: &[f64], temperature: f64) -> f6
 pub fn spearman_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f64 {
     let n = predictions.len();
     if n != targets.len() || n < 2 {
-        return 1.0;
+        return f64::NAN;
     }
 
     let pred_ranks = match soft_rank(predictions, temperature) {
         Ok(r) => r,
-        Err(_) => return 1.0,
+        Err(_) => return f64::NAN,
     };
     let target_ranks = match soft_rank(targets, temperature) {
         Ok(r) => r,
-        Err(_) => return 1.0,
+        Err(_) => return f64::NAN,
     };
 
     let pred_mean: f64 = pred_ranks.iter().sum::<f64>() / n as f64;

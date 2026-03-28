@@ -141,7 +141,7 @@ impl Regularizer for Shannon {
 /// This gives:
 /// - Prediction: sparsemax(θ) = Euclidean projection onto simplex
 /// - Loss: sparsemax loss
-/// - Conjugate: (1/2) ‖sparsemax(θ)‖²
+/// - Conjugate: ⟨θ, sparsemax(θ)⟩ - (1/2) ‖sparsemax(θ)‖²
 ///
 /// # Example
 ///
@@ -169,10 +169,12 @@ impl Regularizer for SquaredL2 {
     }
 
     fn conjugate(&self, theta: &[f64]) -> f64 {
-        // Ω*(θ) = (1/2) ‖sparsemax(θ)‖² + ⟨θ - sparsemax(θ), sparsemax(θ)⟩
-        // Simplifies to: (1/2) ‖sparsemax(θ)‖²
+        // Ω*(θ) = max_p { ⟨θ, p⟩ - Ω(p) } = ⟨θ, p*⟩ - (1/2)‖p*‖²
+        // where p* = sparsemax(θ)
         let p = sparsemax(theta);
-        0.5 * p.iter().map(|&x| x * x).sum::<f64>()
+        let inner: f64 = theta.iter().zip(&p).map(|(&t, &pi)| t * pi).sum();
+        let norm_sq: f64 = p.iter().map(|&x| x * x).sum();
+        inner - 0.5 * norm_sq
     }
 
     fn loss(&self, theta: &[f64], y: &[f64]) -> f64 {
@@ -650,6 +652,25 @@ mod tests {
             loss_sparse.abs() < 1e-6,
             "Sparsemax loss at prediction: {}",
             loss_sparse
+        );
+    }
+
+    #[test]
+    fn test_squared_l2_conjugate_definition() {
+        // Ω*(θ) = <θ, p*> - Ω(p*) where p* = sparsemax(θ)
+        let theta = [2.0, 1.0, 0.1, -1.0];
+        let p_star = sparsemax(&theta);
+
+        let inner: f64 = theta.iter().zip(&p_star).map(|(&t, &p)| t * p).sum();
+        let omega_p = 0.5 * p_star.iter().map(|&x| x * x).sum::<f64>();
+        let expected = inner - omega_p;
+
+        let actual = SquaredL2.conjugate(&theta);
+        assert!(
+            (actual - expected).abs() < 1e-10,
+            "conjugate={}, expected={}",
+            actual,
+            expected
         );
     }
 }

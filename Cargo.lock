@@ -289,9 +289,9 @@ checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
 name = "innr"
-version = "0.1.9"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75d0b29074c87add080dab7566c3a11854cd90a315af73fa5537b4643234142"
+checksum = "761791b2bc31ea3295c68c48bf1378402684ebcf47202c65f3226ef7affb8bc3"
 
 [[package]]
 name = "is-terminal"
@@ -934,4 +934,4 @@ checksum = "bd8f3f50b848df28f887acb68e41201b5aea6bc8a8dacc00fb40635ff9a72fea"
 
 [[patch.unused]]
 name = "textprep"
-version = "0.1.4"
+version = "0.1.5"

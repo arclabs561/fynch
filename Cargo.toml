@@ -26,7 +26,7 @@ serde = { version = "1.0", features = ["derive"] }
 rand = { version = "0.9", optional = true }
 
 # Optional: SIMD primitives
-innr = { version = "0.1.8", optional = true }
+innr = { version = "0.2", optional = true }
 # Optional: Stochastic sampling
 kuji = { version = "0.1.7", optional = true }
 

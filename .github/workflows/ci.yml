@@ -23,3 +23,9 @@ jobs:
         run: cargo fmt --all -- --check
       - name: clippy
         run: cargo clippy --all-targets -- -D warnings
+
+      - name: Semver check
+        if: github.event_name == 'pull_request'
+        run: |
+          cargo install cargo-semver-checks --locked || true
+          cargo semver-checks

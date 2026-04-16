@@ -480,6 +480,16 @@ pub fn fast_soft_sort(x: &[f64], temperature: f64) -> Vec<f64> {
 /// # Arguments
 /// * `rankings` - A slice of ranked lists (each list is a Vec of doc IDs)
 /// * `k` - Hyperparameter (default 60 per Cormack et al.)
+///
+/// # Deprecation
+///
+/// RRF belongs with the other fusion algorithms. Use `rankops::rrf` (for two lists),
+/// `rankops::rrf_multi` (for 3+ lists), or `rankops::rrf_weighted` instead.
+/// Those variants also support top-k truncation, explainability, and `(item, score)` input.
+#[deprecated(
+    since = "0.1.2",
+    note = "use rankops::rrf / rankops::rrf_multi instead"
+)]
 pub fn reciprocal_rank_fusion<T: std::hash::Hash + Eq + Clone>(
     rankings: &[Vec<T>],
     k: usize,

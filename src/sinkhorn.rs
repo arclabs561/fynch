@@ -168,6 +168,7 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
     //
     // Let logK[i,j] = -(C[i,j] - min(C)) / epsilon.
     // Then u,v updates become log-domain normalization steps via log-sum-exp.
+    #[allow(dead_code)]
     fn log_sum_exp(xs: &[f64]) -> f64 {
         let mut m = f64::NEG_INFINITY;
         for &x in xs {

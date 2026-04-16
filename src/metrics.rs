@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Ranking evaluation metrics.
 //!
 //! **Deprecated**: These metrics have moved to [`rankops::metrics`](https://docs.rs/rankops).

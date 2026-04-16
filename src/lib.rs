@@ -167,6 +167,7 @@ pub use fenchel::{
     entmax, entropy_bits, entropy_nats, softmax, softmax_with_temperature, sparsemax, Regularizer,
     Shannon, SquaredL2, Tsallis,
 };
+#[allow(deprecated)]
 pub use metrics::{compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics};
 pub use sigmoid::{sigmoid, sigmoid_derivative};
 pub use sinkhorn::{sinkhorn_rank, sinkhorn_sort, SinkhornConfig};

@@ -122,6 +122,7 @@ impl DiffSortNet {
         }
 
         let n = self.size;
+        let out_n = x.len();
 
         // Pad input if needed (bitonic requires power-of-2).
         // Pad with a large finite value so padding sorts to the end and gets trimmed.
@@ -133,61 +134,46 @@ impl DiffSortNet {
             values.push(pad_val);
         }
 
-        // Initialize permutation matrix as identity
-        // perm[i][j] = probability that original position i ends up at output position j
-        let mut perm: Vec<Vec<f64>> = (0..n)
-            .map(|i| {
-                let mut row = vec![0.0; n];
-                row[i] = 1.0;
-                row
-            })
-            .collect();
+        // Flat row-major permutation matrix (n * n) for cache-friendly access.
+        // perm_flat[i * n + j] = P[i][j]
+        let mut perm_flat = vec![0.0_f64; n * n];
+        for i in 0..n {
+            perm_flat[i * n + i] = 1.0;
+        }
 
         // Apply each comparator (a, b) means "min at a, max at b"
         for &(a, b) in &self.comparators {
-            self.apply_soft_comparator(&mut values, &mut perm, a, b);
+            let diff = (values[a] - values[b]) * self.steepness;
+            let sigma = relaxed_sigmoid(diff, self.dist);
+            let one_minus = 1.0 - sigma;
+
+            // Interpolate values
+            let va = values[a];
+            let vb = values[b];
+            values[a] = one_minus * va + sigma * vb;
+            values[b] = sigma * va + one_minus * vb;
+
+            // Update permutation rows in flat layout: contiguous memory reads.
+            let row_a = a * n;
+            let row_b = b * n;
+            for k in 0..n {
+                let pa = perm_flat[row_a + k];
+                let pb = perm_flat[row_b + k];
+                perm_flat[row_a + k] = one_minus * pa + sigma * pb;
+                perm_flat[row_b + k] = sigma * pa + one_minus * pb;
+            }
         }
 
-        // Trim padding
-        let out_n = x.len();
+        // Convert to Vec<Vec<f64>> output, trimming padding columns and rows.
         let sorted = values[..out_n].to_vec();
-        let trimmed_perm: Vec<Vec<f64>> = perm[..out_n]
-            .iter()
-            .map(|row| row[..out_n].to_vec())
+        let trimmed_perm: Vec<Vec<f64>> = (0..out_n)
+            .map(|i| perm_flat[i * n..i * n + out_n].to_vec())
             .collect();
 
         Ok((sorted, trimmed_perm))
     }
 
-    /// Apply a single soft comparator to positions a, b.
-    ///
-    /// Semantics: position `a` should get the min, position `b` the max.
-    ///
-    /// sigma = sigmoid((x_a - x_b) * steepness):
-    /// - sigma ~ 1 when x_a > x_b (swap needed)
-    /// - sigma ~ 0 when x_a < x_b (no swap)
-    fn apply_soft_comparator(&self, values: &mut [f64], perm: &mut [Vec<f64>], a: usize, b: usize) {
-        let diff = (values[a] - values[b]) * self.steepness;
-        let sigma = relaxed_sigmoid(diff, self.dist);
-
-        // Interpolate values
-        let va = values[a];
-        let vb = values[b];
-        values[a] = (1.0 - sigma) * va + sigma * vb; // tends toward min
-        values[b] = sigma * va + (1.0 - sigma) * vb; // tends toward max
-
-        // Update permutation rows
-        let n = perm[0].len();
-        #[allow(clippy::needless_range_loop)] // two mutable rows from the same Vec
-        for k in 0..n {
-            let pa = perm[a][k];
-            let pb = perm[b][k];
-            perm[a][k] = (1.0 - sigma) * pa + sigma * pb;
-            perm[b][k] = sigma * pa + (1.0 - sigma) * pb;
-        }
-    }
-
-    /// Return the number of comparators in this network.
+    /// Return the number of comparators in this sorting network.
     pub fn num_comparators(&self) -> usize {
         self.comparators.len()
     }

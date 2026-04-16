@@ -388,15 +388,19 @@ pub fn soft_rank(x: &[f64], temperature: f64) -> Result<Vec<f64>> {
     let n = x.len();
     let mut ranks = vec![1.0; n];
 
+    // Precompute inverse temperature to replace per-element division with multiplication.
+    let inv_temp = 1.0 / temperature;
     for i in 0..n {
+        let xi = x[i];
+        let mut acc = 0.0_f64;
         for j in 0..n {
             if i != j {
-                // Sigmoid of scaled difference
-                let diff = (x[j] - x[i]) / temperature;
-                let sigmoid = 1.0 / (1.0 + (-diff).exp());
-                ranks[i] += sigmoid;
+                // sigmoid((x[j] - x[i]) / temperature)
+                let diff = (x[j] - xi) * inv_temp;
+                acc += 1.0 / (1.0 + (-diff).exp());
             }
         }
+        ranks[i] += acc;
     }
 
     Ok(ranks)

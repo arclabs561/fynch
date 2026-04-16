@@ -1,7 +1,17 @@
 //! Ranking evaluation metrics.
 //!
-//! Standard metrics for evaluating ranking quality in information retrieval,
-//! knowledge graph completion, and learning-to-rank tasks.
+//! **Deprecated**: These metrics have moved to [`rankops::metrics`](https://docs.rs/rankops).
+//! The implementations remain here for backward compatibility but will be removed in a future release.
+//!
+//! # Migration
+//!
+//! Replace `fynch::metrics::*` with `rankops::metrics::*` in your imports.
+//!
+//! ```toml
+//! # Cargo.toml
+//! [dependencies]
+//! rankops = "0.1"
+//! ```
 //!
 //! # Metrics Overview
 //!
@@ -11,29 +21,6 @@
 //! | Hits@k | [0, 1] | Fraction with correct in top k |
 //! | Mean Rank | [1, n] | Average rank of correct answer |
 //! | NDCG | [0, 1] | Position-weighted relevance score |
-//!
-//! # Example
-//!
-//! ```rust
-//! use fynch::metrics::{mrr, hits_at_k, mean_rank, ndcg};
-//!
-//! // Ranks of correct answers for 4 queries (1-indexed)
-//! let ranks = [1, 3, 2, 5];
-//!
-//! assert!((mrr(&ranks) - 0.508).abs() < 0.01);
-//! assert!((hits_at_k(&ranks, 3) - 0.75).abs() < 0.01);
-//! assert!((mean_rank(&ranks) - 2.75).abs() < 0.01);
-//! ```
-//!
-//! # Research Background
-//!
-//! These metrics are standard in:
-//! - **Information Retrieval**: Evaluating search engines (Croft et al., 2010)
-//! - **Knowledge Graphs**: Link prediction (Bordes et al., 2013)
-//! - **Recommendation**: Ranking candidate items
-//!
-//! MRR was popularized for KG evaluation by Bordes et al. (2013) "Translating
-//! Embeddings for Modeling Multi-relational Data".
 
 /// Mean Reciprocal Rank (MRR).
 ///
@@ -64,6 +51,7 @@
 /// // (1/1 + 1/3 + 1/2 + 1/5) / 4 ≈ 0.508
 /// assert!((score - 0.508).abs() < 0.01);
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::mrr")]
 pub fn mrr(ranks: &[usize]) -> f64 {
     if ranks.is_empty() {
         return 0.0;
@@ -106,6 +94,7 @@ pub fn mrr(ranks: &[usize]) -> f64 {
 /// assert!((hits_at_k(&ranks, 3) - 0.75).abs() < 0.01);  // 3 of 4 in top 3
 /// assert!((hits_at_k(&ranks, 1) - 0.25).abs() < 0.01);  // 1 of 4 at rank 1
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::hits_at_k")]
 pub fn hits_at_k(ranks: &[usize], k: usize) -> f64 {
     if ranks.is_empty() || k == 0 {
         return 0.0;
@@ -137,6 +126,7 @@ pub fn hits_at_k(ranks: &[usize], k: usize) -> f64 {
 /// let ranks = [1, 3, 2, 5];
 /// assert!((mean_rank(&ranks) - 2.75).abs() < 0.01);
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::mean_rank")]
 pub fn mean_rank(ranks: &[usize]) -> f64 {
     if ranks.is_empty() {
         return 0.0;
@@ -187,6 +177,7 @@ pub fn mean_rank(ranks: &[usize]) -> f64 {
 /// let ideal = [3.0, 2.0, 1.0, 0.0];
 /// assert!(ndcg(&relevance, &ideal) < 1.0);
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::ndcg")]
 pub fn ndcg(relevance: &[f64], ideal: &[f64]) -> f64 {
     let actual_dcg = dcg(relevance);
     let ideal_dcg = dcg(ideal);
@@ -201,6 +192,7 @@ pub fn ndcg(relevance: &[f64], ideal: &[f64]) -> f64 {
 /// Discounted Cumulative Gain (DCG).
 ///
 /// Helper for NDCG. Sums relevance weighted by log position.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::dcg")]
 pub fn dcg(relevance: &[f64]) -> f64 {
     relevance
         .iter()
@@ -225,9 +217,11 @@ pub fn dcg(relevance: &[f64]) -> f64 {
 /// let ideal = [3.0, 2.0, 1.0, 0.0];
 /// let score = ndcg_at_k(&relevance, &ideal, 3);
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::ndcg_at_k")]
 pub fn ndcg_at_k(relevance: &[f64], ideal: &[f64], k: usize) -> f64 {
     let rel_k: Vec<f64> = relevance.iter().take(k).copied().collect();
     let ideal_k: Vec<f64> = ideal.iter().take(k).copied().collect();
+    #[allow(deprecated)]
     ndcg(&rel_k, &ideal_k)
 }
 
@@ -256,6 +250,7 @@ pub fn ndcg_at_k(relevance: &[f64], ideal: &[f64], k: usize) -> f64 {
 /// // 0.8 > 0.5 > 0.3 > 0.1, so 0.5 is rank 2
 /// assert_eq!(rank, 2);
 /// ```
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::compute_rank")]
 pub fn compute_rank(target_score: f64, all_scores: &[f64], higher_is_better: bool) -> usize {
     let mut rank = 1;
     for &score in all_scores {
@@ -273,6 +268,9 @@ pub fn compute_rank(target_score: f64, all_scores: &[f64], higher_is_better: boo
 /// Aggregate ranking metrics.
 ///
 /// Computes MRR, Hits@1/3/10, and Mean Rank in one pass.
+///
+/// Deprecated: use [`rankops::metrics::RankingMetrics`](https://docs.rs/rankops) instead.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::RankingMetrics")]
 #[derive(Debug, Clone, Default)]
 pub struct RankingMetrics {
     /// Mean Reciprocal Rank
@@ -294,6 +292,7 @@ pub struct RankingMetrics {
 /// P@k = |relevant ∩ top-k| / k
 ///
 /// For rank-based input, this assumes rank <= k means relevant.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::precision_at_k")]
 pub fn precision_at_k(ranks: &[usize], k: usize) -> f64 {
     if k == 0 {
         return 0.0;
@@ -305,6 +304,7 @@ pub fn precision_at_k(ranks: &[usize], k: usize) -> f64 {
 /// Recall at k: fraction of relevant docs in top-k.
 ///
 /// R@k = |relevant ∩ top-k| / |relevant|
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::recall_at_k")]
 pub fn recall_at_k(ranks: &[usize], n_relevant: usize, k: usize) -> f64 {
     if n_relevant == 0 {
         return 0.0;
@@ -316,6 +316,7 @@ pub fn recall_at_k(ranks: &[usize], n_relevant: usize, k: usize) -> f64 {
 /// Average Precision: average of precision at each relevant doc.
 ///
 /// AP = (1/|R|) × Σᵢ (P@rankᵢ × 𝟙[rankᵢ exists])
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::average_precision")]
 pub fn average_precision(ranks: &[usize], n_relevant: usize) -> f64 {
     if n_relevant == 0 || ranks.is_empty() {
         return 0.0;
@@ -338,8 +339,11 @@ pub fn average_precision(ranks: &[usize], n_relevant: usize) -> f64 {
 }
 
 /// F-measure at k: harmonic mean of precision and recall.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::f_measure_at_k")]
 pub fn f_measure_at_k(ranks: &[usize], n_relevant: usize, k: usize, beta: f64) -> f64 {
+    #[allow(deprecated)]
     let p = precision_at_k(ranks, k);
+    #[allow(deprecated)]
     let r = recall_at_k(ranks, n_relevant, k);
 
     if p == 0.0 && r == 0.0 {
@@ -351,7 +355,9 @@ pub fn f_measure_at_k(ranks: &[usize], n_relevant: usize, k: usize, beta: f64) -
 }
 
 /// R-Precision: Precision at R, where R is the number of relevant documents.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::r_precision")]
 pub fn r_precision(ranks: &[usize], n_relevant: usize) -> f64 {
+    #[allow(deprecated)]
     precision_at_k(ranks, n_relevant)
 }
 
@@ -359,6 +365,7 @@ pub fn r_precision(ranks: &[usize], n_relevant: usize) -> f64 {
 ///
 /// ERR models user behavior using a cascade model. For binary relevance,
 /// ERR reduces to Reciprocal Rank of the first relevant document.
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::err_at_k")]
 pub fn err_at_k(ranks: &[usize], k: usize) -> f64 {
     if ranks.is_empty() {
         return 0.0;
@@ -387,6 +394,7 @@ pub fn err_at_k(ranks: &[usize], k: usize) -> f64 {
 /// Rank-Biased Precision (RBP).
 ///
 /// persistence: probability of user continuing to next rank (p).
+#[deprecated(since = "0.1.2", note = "moved to rankops::metrics::rbp_at_k")]
 pub fn rbp_at_k(ranks: &[usize], k: usize, persistence: f64) -> f64 {
     if persistence <= 0.0 || persistence >= 1.0 {
         return 0.0;
@@ -402,6 +410,7 @@ pub fn rbp_at_k(ranks: &[usize], k: usize, persistence: f64) -> f64 {
     (1.0 - persistence) * rbp
 }
 
+#[allow(deprecated)]
 impl RankingMetrics {
     /// Compute all metrics from ranks.
     pub fn from_ranks(ranks: &[usize]) -> Self {
@@ -425,6 +434,7 @@ impl RankingMetrics {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

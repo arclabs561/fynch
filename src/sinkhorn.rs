@@ -193,49 +193,72 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
         log_k[idx] = -((cost[idx] - min_cost) * inv_eps);
     }
 
-    let mut log_u = vec![0.0; n];
-    let mut log_v = vec![0.0; n];
+    let mut log_u = vec![0.0_f64; n];
+    let mut log_v = vec![0.0_f64; n];
+    // Reusable buffers: avoids allocating two Vec<f64> per iteration.
+    let mut log_u_new = vec![0.0_f64; n];
+    let mut log_v_new = vec![0.0_f64; n];
 
-    // Sinkhorn iterations in log-space
-    let mut scratch = vec![0.0; n];
-    for _ in 0..config.max_iter {
+    // Sinkhorn iterations in log-space.
+    // Convergence check is deferred every `check_every` iterations to amortize
+    // the extra logsumexp pass (3x work per iter otherwise).
+    let check_every = 5usize;
+    let mut scratch = vec![0.0_f64; n];
+    for iter in 0..config.max_iter {
         // log_u[i] = -logsumexp_j (log_k[i,j] + log_v[j])
-        let mut log_u_new = vec![0.0; n];
         for i in 0..n {
+            let row = &log_k[i * n..i * n + n];
+            let mut m = f64::NEG_INFINITY;
             for j in 0..n {
-                scratch[j] = log_k[i * n + j] + log_v[j];
+                let x = row[j] + log_v[j];
+                scratch[j] = x;
+                if x > m {
+                    m = x;
+                }
             }
-            let lse = log_sum_exp(&scratch);
-            log_u_new[i] = -lse;
+            let s: f64 = scratch.iter().map(|&x| (x - m).exp()).sum();
+            log_u_new[i] = -(m + s.ln());
         }
 
         // log_v[j] = -logsumexp_i (log_k[i,j] + log_u_new[i])
-        let mut log_v_new = vec![0.0; n];
         for j in 0..n {
+            let mut m = f64::NEG_INFINITY;
             for i in 0..n {
-                scratch[i] = log_k[i * n + j] + log_u_new[i];
+                let x = log_k[i * n + j] + log_u_new[i];
+                scratch[i] = x;
+                if x > m {
+                    m = x;
+                }
             }
-            let lse = log_sum_exp(&scratch);
-            log_v_new[j] = -lse;
+            let s: f64 = scratch.iter().map(|&x| (x - m).exp()).sum();
+            log_v_new[j] = -(m + s.ln());
         }
 
-        // Convergence: maximum row-sum deviation from 1.
-        // row_sum[i] = Σ_j exp(log_u_new[i] + log_k[i,j] + log_v_new[j])
-        let mut max_err: f64 = 0.0;
-        for i in 0..n {
-            for j in 0..n {
-                scratch[j] = log_u_new[i] + log_k[i * n + j] + log_v_new[j];
+        std::mem::swap(&mut log_u, &mut log_u_new);
+        std::mem::swap(&mut log_v, &mut log_v_new);
+
+        // Deferred convergence: check every `check_every` iterations.
+        // row_sum[i] = Σ_j exp(log_u[i] + log_k[i,j] + log_v[j])
+        if (iter + 1) % check_every == 0 || iter + 1 == config.max_iter {
+            let mut max_err: f64 = 0.0;
+            for i in 0..n {
+                let row = &log_k[i * n..i * n + n];
+                let lui = log_u[i];
+                let mut m = f64::NEG_INFINITY;
+                for j in 0..n {
+                    let x = lui + row[j] + log_v[j];
+                    scratch[j] = x;
+                    if x > m {
+                        m = x;
+                    }
+                }
+                let s: f64 = scratch.iter().map(|&x| (x - m).exp()).sum();
+                let row_sum = (m + s.ln()).exp();
+                max_err = max_err.max((row_sum - 1.0).abs());
             }
-            let log_row_sum = log_sum_exp(&scratch);
-            let row_sum = log_row_sum.exp();
-            max_err = max_err.max((row_sum - 1.0).abs());
-        }
-
-        log_u = log_u_new;
-        log_v = log_v_new;
-
-        if max_err < config.tol {
-            break;
+            if max_err < config.tol {
+                break;
+            }
         }
     }
 

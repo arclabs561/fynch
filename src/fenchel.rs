@@ -400,11 +400,14 @@ pub fn entmax(theta: &[f64], alpha: f64) -> Vec<f64> {
     let mut tau_lo = max_theta - 10.0;
     let mut tau_hi = max_theta;
 
+    // Precompute the exponent once; it is constant throughout bisection.
+    let inv_alpha_m1 = 1.0 / (alpha - 1.0);
+
     for _ in 0..50 {
         let tau = (tau_lo + tau_hi) / 2.0;
         let sum: f64 = theta
             .iter()
-            .map(|&t| ((t - tau).max(0.0)).powf(1.0 / (alpha - 1.0)))
+            .map(|&t| ((t - tau).max(0.0)).powf(inv_alpha_m1))
             .sum();
 
         if sum < 1.0 {
@@ -419,7 +422,7 @@ pub fn entmax(theta: &[f64], alpha: f64) -> Vec<f64> {
     // Compute output
     let mut result: Vec<f64> = theta
         .iter()
-        .map(|&t| ((t - tau).max(0.0)).powf(1.0 / (alpha - 1.0)))
+        .map(|&t| ((t - tau).max(0.0)).powf(inv_alpha_m1))
         .collect();
 
     // Normalize to ensure sum = 1
@@ -490,8 +493,14 @@ pub fn softmax_with_temperature(theta: &[f64], temperature: f64) -> Vec<f64> {
         return vec![1.0 / n; theta.len()];
     }
 
-    let scaled: Vec<f64> = theta.iter().map(|&t| t / temperature).collect();
-    softmax(&scaled)
+    // Fused: avoid the intermediate allocation that softmax() would require.
+    let max = theta
+        .iter()
+        .fold(f64::NEG_INFINITY, |a, &b| a.max(b / temperature));
+    let inv_temp = 1.0 / temperature;
+    let exps: Vec<f64> = theta.iter().map(|&t| (t * inv_temp - max).exp()).collect();
+    let sum: f64 = exps.iter().sum();
+    exps.iter().map(|&e| e / sum).collect()
 }
 
 /// Compute entropy of a probability distribution (in nats).

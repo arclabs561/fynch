@@ -388,19 +388,18 @@ pub fn soft_rank(x: &[f64], temperature: f64) -> Result<Vec<f64>> {
     let n = x.len();
     let mut ranks = vec![1.0; n];
 
-    // Precompute inverse temperature to replace per-element division with multiplication.
+    // Exploit symmetry: sigmoid(d) + sigmoid(-d) = 1, so each pair (i,j)
+    // contributes to both ranks[i] and ranks[j] with a single exp() call.
+    // This halves the number of exp() calls vs the naive double loop.
     let inv_temp = 1.0 / temperature;
     for i in 0..n {
-        let xi = x[i];
-        let mut acc = 0.0_f64;
-        for j in 0..n {
-            if i != j {
-                // sigmoid((x[j] - x[i]) / temperature)
-                let diff = (x[j] - xi) * inv_temp;
-                acc += 1.0 / (1.0 + (-diff).exp());
-            }
+        for j in (i + 1)..n {
+            // sigmoid((x[j] - x[i]) / temperature)
+            let diff = (x[j] - x[i]) * inv_temp;
+            let s = 1.0 / (1.0 + (-diff).exp());
+            ranks[i] += s;
+            ranks[j] += 1.0 - s;
         }
-        ranks[i] += acc;
     }
 
     Ok(ranks)

@@ -16,12 +16,12 @@ fn bench_sinkhorn(c: &mut Criterion) {
 
     // Larger sizes
     for &n in &[32usize, 64, 128] {
-        let big: Vec<f64> = (0..n).map(|i| (i as f64 * 1.3 + 0.7) % (n as f64)).collect();
-        group.bench_with_input(
-            BenchmarkId::new("sinkhorn_rank/eps=0.5", n),
-            &n,
-            |b, _| b.iter(|| fynch::sinkhorn::sinkhorn_rank(black_box(&big), 0.5)),
-        );
+        let big: Vec<f64> = (0..n)
+            .map(|i| (i as f64 * 1.3 + 0.7) % (n as f64))
+            .collect();
+        group.bench_with_input(BenchmarkId::new("sinkhorn_rank/eps=0.5", n), &n, |b, _| {
+            b.iter(|| fynch::sinkhorn::sinkhorn_rank(black_box(&big), 0.5))
+        });
     }
 
     group.finish();

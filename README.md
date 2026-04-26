@@ -4,7 +4,8 @@
 [![Documentation](https://docs.rs/fynch/badge.svg)](https://docs.rs/fynch)
 [![CI](https://github.com/arclabs561/fynch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/fynch/actions/workflows/ci.yml)
 
-Differentiable sorting and ranking.
+Differentiable sorting and ranking in Rust: PAVA isotonic regression,
+Fenchel-Young losses, and O(n log n) FastSoftSort.
 
 Dual-licensed under MIT or Apache-2.0.
 

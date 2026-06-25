@@ -30,3 +30,9 @@ let r = soft_rank(&y, 1.0);
 
 println!("p={p:?}\nisotonic={isotonic:?}\nsoft_rank={r:?}");
 ```
+
+## Examples
+
+Runnable examples live in [`examples/`](examples/):
+
+- `soft_rank_shootout` compares differentiable ranking methods from fynch and rankit on data with a known ground-truth order, measuring how well each recovers it.

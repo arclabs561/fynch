@@ -35,4 +35,4 @@ println!("p={p:?}\nisotonic={isotonic:?}\nsoft_rank={r:?}");
 
 Runnable examples live in [`examples/`](examples/):
 
-- `soft_rank_shootout` compares differentiable ranking methods from fynch and rankit on data with a known ground-truth order, measuring how well each recovers it.
+- `soft_rank_shootout` compares differentiable ranking methods from fynch and rankit on data with a known ground-truth order, the building block for gradient-based learning-to-rank where a hard sort would block backpropagation.

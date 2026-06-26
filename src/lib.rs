@@ -151,6 +151,8 @@
 //! - Blondel et al. (2020). "Fast Differentiable Sorting and Ranking"
 //! - Cuturi et al. (2019). "Differentiable Ranking via Optimal Transport"
 
+#[cfg(feature = "logp")]
+mod bregman;
 pub mod curvature;
 pub mod fenchel;
 pub mod lapsum;

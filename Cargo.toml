@@ -16,11 +16,14 @@ publish = true
 default = []
 # Gumbel-Softmax for stochastic top-k
 gumbel = ["dep:kuji", "dep:rand"]
+# Implement logp::BregmanGenerator for exact Fenchel-Young/Bregman overlaps.
+logp = ["dep:logp"]
 
 [dependencies]
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 rand = { version = "0.9", optional = true }
+logp = { version = "0.2", optional = true }
 
 # Optional: SIMD primitives
 # Optional: Stochastic sampling

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+- Optional `logp` feature implementing `logp::BregmanGenerator` for
+  `Shannon` and `SquaredL2`.
+
 ## [0.2.1] - 2026-06-26
 
 ### Added

@@ -353,7 +353,7 @@ pub fn sparse_topk(scores: &[f64], k: usize, steepness: f64) -> Result<Vec<Vec<f
 /// 1. Compute attribution matrix A (n x k) via sorting network
 /// 2. Build per-class distribution: `d[i] = sum_j p_k[j] * A[i][j..k].sum()`
 ///    (cumulative: rank j contributes to "in top-j")
-/// 3. Loss = -log(d[target] + eps)
+/// 3. Loss = `-log(d[target] + eps)`
 ///
 /// The `top1_mode` from the paper is handled by setting `p_k[0]` to use
 /// softmax for the top-1 component. When `p_k[0] > 0`, the top-1 weight

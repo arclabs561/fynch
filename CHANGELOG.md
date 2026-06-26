@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `sparsemap_explicit` and `sparsemap_loss_explicit` for SparseMAP over a
+  small explicit vertex set.
+
 ## [0.1.4] - 2026-06-10
 
 ### Changed

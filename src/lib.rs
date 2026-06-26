@@ -159,6 +159,7 @@ pub mod metrics;
 pub mod sigmoid;
 pub mod sinkhorn;
 pub mod sorting_network;
+pub mod sparsemap;
 pub mod topk;
 
 use thiserror::Error;
@@ -171,6 +172,9 @@ pub use fenchel::{
 pub use metrics::{compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics};
 pub use sigmoid::{sigmoid, sigmoid_derivative};
 pub use sinkhorn::{sinkhorn_rank, sinkhorn_sort, SinkhornConfig};
+pub use sparsemap::{
+    sparsemap_explicit, sparsemap_loss_explicit, SparseMapPrediction, SparseMapWeight,
+};
 pub use topk::{
     differentiable_bottomk, differentiable_topk, sparse_topk, sparse_topk_matrix, topk_ce_loss,
     topk_cross_entropy_loss,

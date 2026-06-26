@@ -112,7 +112,7 @@ impl DiffSortNet {
     /// Sort the input, returning (sorted_values, soft_permutation_matrix).
     ///
     /// The permutation matrix P satisfies: `sorted ≈ x @ P` (row convention).
-    /// P[i][j] is the soft weight of input position i contributing to output position j.
+    /// `P[i][j]` is the soft weight of input position i contributing to output position j.
     pub fn sort(&self, x: &[f64]) -> Result<(Vec<f64>, Vec<Vec<f64>>)> {
         if x.is_empty() {
             return Err(Error::EmptyInput);

@@ -15,7 +15,7 @@ Dual-licensed under MIT or Apache-2.0.
 
 ```toml
 [dependencies]
-fynch = "0.2.1"
+fynch = "0.2.2"
 ```
 
 ```rust

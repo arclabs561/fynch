@@ -436,50 +436,89 @@ pub fn soft_sort(x: &[f64], temperature: f64) -> Result<Vec<f64>> {
     sinkhorn::sinkhorn_sort(x, temperature)
 }
 
-/// Fast Differentiable Sorting ($O(n \log n)$).
+/// Non-increasing isotonic regression: argmin over v₁ ≥ ... ≥ vₙ of ‖v − z‖².
 ///
-/// Implements the algorithm from Blondel et al. (2020), "Fast Differentiable
-/// Sorting and Ranking". Unlike Sinkhorn ($O(n^2)$), this scales to large inputs.
+/// [`pava`] fits the non-decreasing direction; negating input and output
+/// flips it. The reference isotonic in Blondel et al.'s code solves this
+/// non-increasing form.
+fn isotonic_l2_decreasing(z: &[f64]) -> Vec<f64> {
+    let negated: Vec<f64> = z.iter().map(|v| -v).collect();
+    pava(&negated).into_iter().map(|v| -v).collect()
+}
+
+/// Fast Differentiable Sorting ($O(n \log n)$), ascending, L2 regularization.
 ///
-/// The algorithm projects the input vector $\theta$ onto the permutahedron
-/// (the convex hull of all permutation matrices).
+/// Implements soft sort from Blondel et al. (2020), "Fast Differentiable
+/// Sorting and Ranking" (arXiv:2002.08871). Unlike Sinkhorn ($O(n^2)$), this
+/// scales to large inputs. Mirrors the reference implementation
+/// (google-research/fast-soft-sort `SoftSort`, `direction="ASCENDING"`,
+/// `regularization="l2"`): with $w = (n, ..., 1)/\varepsilon$ and $s$ the
+/// negated input sorted descending, the result is
+/// $-(w - \text{isotonic}_{\searrow}(w - s))$.
 ///
-/// # Mathematical Details
-/// The projection is defined as:
-/// $P(\theta) = \text{argmin}_{w \in \Pi} \|w - \theta\|^2$
-/// where $\Pi$ is the permutahedron. Blondel et al. show this reduces to
-/// sorting $\theta$ and then solving an isotonic regression (PAVA) on the
-/// values $(\text{sorted\_}\theta - \rho)$ where $\rho$ is a target sequence.
-pub fn fast_soft_sort(x: &[f64], temperature: f64) -> Vec<f64> {
+/// As `regularization_strength` → 0 the output converges to the hard-sorted
+/// values (ascending); large strengths pull the output toward the mean.
+/// Verified against reference outputs in `tests/blondel_reference.rs`.
+pub fn fast_soft_sort(x: &[f64], regularization_strength: f64) -> Vec<f64> {
     if x.is_empty() {
         return vec![];
     }
     let n = x.len();
 
-    // 1. Get sorting permutation and sorted values
-    let mut indexed: Vec<(usize, f64)> = x.iter().copied().enumerate().collect();
-    indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
-    let (_indices, sorted): (Vec<usize>, Vec<f64>) = indexed.into_iter().unzip();
+    // ASCENDING direction in the reference flips the sign of the input.
+    let mut s: Vec<f64> = x.iter().map(|v| -v).collect();
+    s.sort_by(|a, b| b.total_cmp(a));
 
-    // 2. Define target values (rho) for the permutahedron projection
-    // For soft sorting, rho is typically [1, 2, ..., n]
-    let rho: Vec<f64> = (1..=n).map(|i| i as f64 * temperature).collect();
+    let w: Vec<f64> = (1..=n)
+        .rev()
+        .map(|i| i as f64 / regularization_strength)
+        .collect();
 
-    // 3. Compute PAVA on (sorted - rho)
-    let mut diff = Vec::with_capacity(n);
-    for i in 0..n {
-        diff.push(sorted[i] - rho[i]);
+    let diff: Vec<f64> = w.iter().zip(&s).map(|(wi, si)| wi - si).collect();
+    let res = isotonic_l2_decreasing(&diff);
+
+    w.iter().zip(&res).map(|(wi, ri)| -(wi - ri)).collect()
+}
+
+/// Fast Differentiable Ranking ($O(n \log n)$), ascending, L2 regularization.
+///
+/// Implements soft rank from Blondel et al. (2020) via the permutahedron
+/// projection $P(x/\varepsilon)$ with $\rho = (n, ..., 1)$, mirroring the
+/// reference implementation (google-research/fast-soft-sort `SoftRank`,
+/// `direction="ASCENDING"`, `regularization="l2"`). Returns one soft rank per
+/// input position, in input order; ranks are 1-based and ascending (the
+/// smallest value tends to rank 1 as `regularization_strength` → 0).
+///
+/// Unlike the $O(n^2)$ pairwise-sigmoid [`soft_rank`], this is the exact
+/// projection formulation; the two do not compute the same relaxation.
+/// Verified against reference outputs in `tests/blondel_reference.rs`.
+pub fn fast_soft_rank(x: &[f64], regularization_strength: f64) -> Result<Vec<f64>> {
+    if x.is_empty() {
+        return Err(Error::EmptyInput);
     }
-    let v = pava(&diff);
-
-    // 4. The soft sorted values are (sorted - v)
-    // Note: This needs to be mapped back to original indices for ranking,
-    // but for "sorted values" we just return them.
-    let mut res = Vec::with_capacity(n);
-    for i in 0..n {
-        res.push(sorted[i] - v[i]);
+    if regularization_strength <= 0.0 {
+        return Err(Error::InvalidTemperature(regularization_strength));
     }
-    res
+    let n = x.len();
+    let scale = 1.0 / regularization_strength;
+    let theta: Vec<f64> = x.iter().map(|v| v * scale).collect();
+
+    // argsort descending; stable sort keeps tie handling deterministic.
+    let mut perm: Vec<usize> = (0..n).collect();
+    perm.sort_by(|&a, &b| theta[b].total_cmp(&theta[a]));
+    let s: Vec<f64> = perm.iter().map(|&i| theta[i]).collect();
+    let w: Vec<f64> = (1..=n).rev().map(|i| i as f64).collect();
+
+    // Projection onto the permutahedron of w: primal = s - isotonic_dec(s - w),
+    // undone back to input order.
+    let diff: Vec<f64> = s.iter().zip(&w).map(|(si, wi)| si - wi).collect();
+    let dual = isotonic_l2_decreasing(&diff);
+
+    let mut out = vec![0.0; n];
+    for (sorted_pos, &orig_idx) in perm.iter().enumerate() {
+        out[orig_idx] = s[sorted_pos] - dual[sorted_pos];
+    }
+    Ok(out)
 }
 
 /// Reciprocal Rank Fusion (RRF).

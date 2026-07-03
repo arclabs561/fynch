@@ -30,7 +30,7 @@ argmax sits between the model and the loss.
 
 ```toml
 [dependencies]
-fynch = "0.2.2"
+fynch = "0.3"
 ```
 
 ```rust

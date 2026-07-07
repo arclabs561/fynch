@@ -2,14 +2,10 @@
 
 [![crates.io](https://img.shields.io/crates/v/fynch.svg)](https://crates.io/crates/fynch)
 [![Documentation](https://docs.rs/fynch/badge.svg)](https://docs.rs/fynch)
-[![CI](https://github.com/arclabs561/fynch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/fynch/actions/workflows/ci.yml)
 
-Differentiable sorting and ranking: PAVA isotonic regression,
-Fenchel-Young losses, and O(n log n) FastSoftSort.
+Differentiable sorting and ranking.
 
 Dual-licensed under MIT or Apache-2.0.
-
-[crates.io](https://crates.io/crates/fynch) | [docs.rs](https://docs.rs/fynch)
 
 ## What it does
 

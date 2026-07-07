@@ -495,9 +495,7 @@ pub mod gumbel {
     /// // noise follows Gumbel(0, 1) distribution
     /// ```
     pub fn gumbel_noise<R: Rng + ?Sized>(rng: &mut R) -> f64 {
-        let u: f64 = rng.random_range(0.0..1.0);
-        let u = u.clamp(1e-10, 1.0 - 1e-10);
-        -(-u.ln()).ln()
+        drawset::gumbel_noise(rng)
     }
 
     /// Add Gumbel noise to logits for stochastic sampling.
@@ -505,7 +503,10 @@ pub mod gumbel {
     /// Returns noisy_logits where argmax(noisy_logits) samples from
     /// the categorical distribution defined by softmax(logits).
     pub fn add_gumbel_noise<R: Rng + ?Sized>(logits: &[f64], rng: &mut R) -> Vec<f64> {
-        logits.iter().map(|&l| l + gumbel_noise(rng)).collect()
+        logits
+            .iter()
+            .map(|&logit| logit + drawset::gumbel_noise(rng))
+            .collect()
     }
 
     /// Gumbel-Softmax: differentiable approximation to categorical sampling.
@@ -523,16 +524,7 @@ pub mod gumbel {
         temperature: f64,
         rng: &mut R,
     ) -> Vec<f64> {
-        let noisy = add_gumbel_noise(logits, rng);
-
-        // Softmax with temperature
-        let max = noisy.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let exps: Vec<f64> = noisy
-            .iter()
-            .map(|&l| ((l - max) / temperature).exp())
-            .collect();
-        let sum: f64 = exps.iter().sum();
-        exps.iter().map(|&e| e / sum).collect()
+        drawset::gumbel_softmax(logits, temperature, 1.0, rng)
     }
 
     /// Relaxed top-k using iterated Gumbel-Softmax (Kool et al., 2019).

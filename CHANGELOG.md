@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-07
+
+### Changed
+- Delegated the optional Gumbel noise and Gumbel-Softmax helpers to `drawset`.
+
 ## [0.3.1] - 2026-07-07
 
 ### Changed

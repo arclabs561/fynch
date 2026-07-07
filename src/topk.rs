@@ -537,7 +537,7 @@ pub mod gumbel {
 
     /// Relaxed top-k using iterated Gumbel-Softmax (Kool et al., 2019).
     ///
-    /// Delegates to [`kuji::relaxed_topk_gumbel`] for the correct iterated
+    /// Delegates to [`drawset::relaxed_topk_gumbel`] for the correct iterated
     /// masked-softmax algorithm that enforces without-replacement structure.
     /// The output sums to approximately k.
     ///
@@ -555,7 +555,7 @@ pub mod gumbel {
         scale: f64,
         rng: &mut R,
     ) -> Vec<f64> {
-        kuji::relaxed_topk_gumbel(scores, k, temperature, scale, rng)
+        drawset::relaxed_topk_gumbel(scores, k, temperature, scale, rng)
     }
 }
 

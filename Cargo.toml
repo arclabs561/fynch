@@ -1,6 +1,6 @@
 [package]
 name = "fynch"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "Differentiable sorting and ranking: PAVA, Fenchel-Young losses, and O(n log n) FastSoftSort"
@@ -15,7 +15,7 @@ publish = true
 [features]
 default = []
 # Gumbel-Softmax for stochastic top-k
-gumbel = ["dep:kuji", "dep:rand"]
+gumbel = ["dep:drawset", "dep:rand"]
 # Implement logp::BregmanGenerator for exact Fenchel-Young/Bregman overlaps.
 logp = ["dep:logp"]
 
@@ -27,7 +27,7 @@ logp = { version = "0.2", optional = true }
 
 # Optional: SIMD primitives
 # Optional: Stochastic sampling
-kuji = { version = "0.1.7", optional = true }
+drawset = { version = "0.1.0", optional = true }
 
 [dev-dependencies]
 approx = "0.5"

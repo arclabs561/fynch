@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-07
+
+### Changed
+- Switched the optional `gumbel` feature from `kuji` to `drawset`.
+
 ## [0.3.0] - 2026-07-03
 
 ### Fixed

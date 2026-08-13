@@ -39,7 +39,7 @@
 //! |----------|--------|---------------|------------|
 //! | PAVA + Sigmoid | Root | L2 | O(n) / O(n²) |
 //! | Sinkhorn OT | [`sinkhorn`] | Entropy (Shannon Ω) | O(n² × iter) |
-//! | LapSum | [`lapsum`] | Laplacian kernel | O(n² + n log n) |
+//! | LapSum | [`lapsum`] | Laplace-CDF inversion | O(n log n) |
 //!
 //! Sinkhorn sorting is exactly FY with Shannon regularization applied to
 //! the permutation polytope (Birkhoff polytope).
@@ -54,9 +54,9 @@
 //! | [`fenchel::softmax`] | Dense prediction | [`fenchel`] |
 //! | [`fenchel::sparsemax`] | Sparse prediction | [`fenchel`] |
 //! | [`fenchel::entmax`] | Tunable sparsity | [`fenchel`] |
-//! | [`lapsum_sort`] | Laplacian soft sort | [`lapsum`] |
-//! | [`lapsum_rank`] | Laplacian soft rank | [`lapsum`] |
-//! | [`lapsum_topk`] | Laplacian soft top-k | [`lapsum`] |
+//! | [`lapsum_soft_sort`] | LapSum soft sort | [`lapsum`] |
+//! | [`lapsum_soft_rank`] | LapSum soft rank | [`lapsum`] |
+//! | [`lapsum_soft_topk`] | LapSum soft top-k | [`lapsum`] |
 //!
 //! ## Quick Start
 //!
@@ -185,7 +185,12 @@ pub use topk::{
     topk_cross_entropy_loss,
 };
 
-pub use lapsum::{lapsum_permutation, lapsum_rank, lapsum_sort, lapsum_topk};
+#[allow(deprecated)]
+pub use lapsum::{
+    laplacian_kernel_permutation, laplacian_kernel_rank, laplacian_kernel_sort,
+    laplacian_kernel_topk, lapsum_permutation, lapsum_rank, lapsum_soft_rank, lapsum_soft_sort,
+    lapsum_soft_topk, lapsum_sort, lapsum_threshold, lapsum_topk,
+};
 pub use sorting_network::{
     bitonic_sort, odd_even_sort, ranks_from_permutation, DiffSortNet, NetworkType, RelaxDist,
 };

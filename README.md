@@ -50,7 +50,8 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 
 - `fenchel`: the generic framework (regularizers, prediction functions, losses).
 - `sinkhorn`: entropic optimal transport for soft permutations.
-- `lapsum`: pairwise Laplacian-kernel approximations to sort, rank, and top-k.
+- `lapsum`: LapSum soft sort, rank, and top-k; the earlier kernel smoother is
+  retained under `laplacian_kernel_*` names.
 - `loss`: learning-to-rank losses (Spearman, ListNet).
 - `metrics`: IR evaluation (MRR, NDCG, Hits@k).
 

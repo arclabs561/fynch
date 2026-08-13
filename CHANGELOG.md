@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+- Corrected the sign of the pairwise soft-rank loss gradient and replaced the
+  mislabeled rank "Hessian" with explicit Jacobian-sensitivity and loss-Hessian
+  helpers. Curvature inputs now reject non-finite values and temperatures.
+
 ## [0.3.2] - 2026-07-07
 
 ### Changed

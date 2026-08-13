@@ -201,6 +201,9 @@ pub enum Error {
 
     #[error("length mismatch: {0} vs {1}")]
     LengthMismatch(usize, usize),
+
+    #[error("input contains a non-finite value")]
+    NonFiniteInput,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

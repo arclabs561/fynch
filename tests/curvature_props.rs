@@ -1,21 +1,23 @@
 //! Property tests for curvature module.
 
-use fynch::curvature::{damped_newton_gradient, newton_soft_rank_loss, soft_rank_hessian_diag};
+use fynch::curvature::{
+    damped_newton_gradient, newton_soft_rank_loss, soft_rank_jacobian_diag_magnitude,
+};
 use proptest::prelude::*;
 
 proptest! {
-    /// Hessian diagonal entries should be non-negative (sum of sigmoid derivatives).
+    /// Jacobian diagonal magnitudes should be non-negative.
     #[test]
     fn prop_hessian_nonnegative(
         len in 2usize..=10,
         temp in 0.01f64..=10.0,
     ) {
         let x: Vec<f64> = (0..len).map(|i| (i as f64 * 0.3).sin()).collect();
-        let h = soft_rank_hessian_diag(&x, temp).unwrap();
+        let h = soft_rank_jacobian_diag_magnitude(&x, temp).unwrap();
 
         for (i, &hi) in h.iter().enumerate() {
-            prop_assert!(hi >= 0.0, "Hessian diag[{i}] = {hi} < 0");
-            prop_assert!(hi.is_finite(), "Hessian diag[{i}] is not finite");
+            prop_assert!(hi >= 0.0, "Jacobian magnitude[{i}] = {hi} < 0");
+            prop_assert!(hi.is_finite(), "Jacobian magnitude[{i}] is not finite");
         }
     }
 
@@ -28,7 +30,7 @@ proptest! {
         let pred: Vec<f64> = (0..len).map(|i| (i as f64 * 0.5).sin()).collect();
         let target: Vec<f64> = (0..len).map(|i| i as f64).collect();
 
-        let (loss, grad) = newton_soft_rank_loss(&pred, &target, temp);
+        let (loss, grad) = newton_soft_rank_loss(&pred, &target, temp).unwrap();
         prop_assert!(loss >= 0.0, "Loss = {loss} < 0");
         prop_assert!(loss.is_finite(), "Loss is not finite");
         for (i, &g) in grad.iter().enumerate() {
@@ -61,7 +63,7 @@ proptest! {
         let pred: Vec<f64> = (0..len).map(|i| i as f64).collect();
         let target: Vec<f64> = (0..len).map(|i| (i as f64) * 10.0).collect();
 
-        let (loss, _) = newton_soft_rank_loss(&pred, &target, temp);
+        let (loss, _) = newton_soft_rank_loss(&pred, &target, temp).unwrap();
         // At high temperature, soft ranks are smoother, so "perfect" ranking still has residual loss
         let threshold = if temp > 0.5 { 0.5 } else { 0.1 };
         prop_assert!(loss < threshold, "Loss should be near zero for matching orders: {loss} (temp={temp})");

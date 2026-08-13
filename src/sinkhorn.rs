@@ -47,15 +47,24 @@ fn standardize(values: &[f64]) -> Vec<f64> {
     if n == 0 {
         return vec![];
     }
-    let mean = values.iter().sum::<f64>() / n as f64;
+    // Scaling first keeps both the sum and squared deviations finite for inputs
+    // near f64::MAX. The common scale cancels during standardization.
+    let scale = values
+        .iter()
+        .fold(0.0_f64, |acc, value| acc.max(value.abs()));
+    if scale == 0.0 {
+        return vec![0.0; n];
+    }
+    let scaled: Vec<_> = values.iter().map(|value| value / scale).collect();
+    let mean = scaled.iter().sum::<f64>() / n as f64;
     let mut var = 0.0;
-    for &v in values {
-        var += (v - mean) * (v - mean);
+    for &value in &scaled {
+        var += (value - mean) * (value - mean);
     }
     var /= n as f64;
     let std = var.sqrt();
-    let denom = (std + 1e-12).max(1e-12);
-    values.iter().map(|&v| (v - mean) / denom).collect()
+    let denom = std.max(f64::EPSILON);
+    scaled.iter().map(|&value| (value - mean) / denom).collect()
 }
 
 fn target_grid(n: usize) -> Vec<f64> {
@@ -86,10 +95,21 @@ impl Default for SinkhornConfig {
     fn default() -> Self {
         Self {
             epsilon: 0.1,
-            max_iter: 100,
-            tol: 1e-6,
+            max_iter: 1_000,
+            tol: 1e-3,
         }
     }
+}
+
+/// A converged Sinkhorn coupling and its convergence diagnostics.
+#[derive(Debug, Clone)]
+pub struct SinkhornOutput {
+    /// Doubly-stochastic coupling in row-major order.
+    pub matrix: Vec<f64>,
+    /// Number of row/column scaling iterations performed.
+    pub iterations: usize,
+    /// Maximum absolute error among all row and column marginals.
+    pub residual: f64,
 }
 
 /// Compute soft permutation matrix via Sinkhorn algorithm.
@@ -99,10 +119,9 @@ impl Default for SinkhornConfig {
 ///
 /// # Convergence
 ///
-/// This function does not expose the iteration count or convergence residual.
-/// It runs until `config.tol` is satisfied or `config.max_iter` is reached,
-/// with no indication of which occurred. If you need to observe convergence,
-/// reimplement the iteration loop with logging.
+/// This function returns [`Error::SinkhornDidNotConverge`] if `config.max_iter`
+/// is reached before `config.tol`. Use
+/// [`sinkhorn_permutation_with_diagnostics`] to inspect successful convergence.
 ///
 /// # Algorithm
 ///
@@ -138,15 +157,43 @@ impl Default for SinkhornConfig {
 /// }
 /// ```
 pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<Vec<f64>> {
+    Ok(sinkhorn_permutation_with_diagnostics(values, config)?.matrix)
+}
+
+/// Compute a soft permutation matrix and report convergence diagnostics.
+///
+/// Unlike an unchecked fixed-iteration implementation, this function returns
+/// [`Error::SinkhornDidNotConverge`] when the requested tolerance is not met.
+pub fn sinkhorn_permutation_with_diagnostics(
+    values: &[f64],
+    config: &SinkhornConfig,
+) -> Result<SinkhornOutput> {
     let n = values.len();
     if n == 0 {
         return Err(Error::EmptyInput);
     }
-    if config.epsilon <= 0.0 {
+    if !config.epsilon.is_finite() || config.epsilon <= 0.0 {
         return Err(Error::InvalidTemperature(config.epsilon));
     }
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(Error::NonFiniteInput);
+    }
+    if config.max_iter == 0 {
+        return Err(Error::InvalidSinkhornConfig(
+            "max_iter must be greater than zero",
+        ));
+    }
+    if !config.tol.is_finite() || config.tol <= 0.0 {
+        return Err(Error::InvalidSinkhornConfig(
+            "tol must be finite and greater than zero",
+        ));
+    }
     if n == 1 {
-        return Ok(vec![1.0]);
+        return Ok(SinkhornOutput {
+            matrix: vec![1.0],
+            iterations: 0,
+            residual: 0.0,
+        });
     }
 
     // IMPORTANT: avoid using a hard sort inside the operator.
@@ -205,6 +252,8 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
     // the extra logsumexp pass (3x work per iter otherwise).
     let check_every = 5usize;
     let mut scratch = vec![0.0_f64; n];
+    let mut iterations = 0;
+    let mut residual = f64::INFINITY;
     for iter in 0..config.max_iter {
         // log_u[i] = -logsumexp_j (log_k[i,j] + log_v[j])
         for i in 0..n {
@@ -237,6 +286,7 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
 
         std::mem::swap(&mut log_u, &mut log_u_new);
         std::mem::swap(&mut log_v, &mut log_v_new);
+        iterations = iter + 1;
 
         // Deferred convergence: check every `check_every` iterations.
         // row_sum[i] = Σ_j exp(log_u[i] + log_k[i,j] + log_v[j])
@@ -257,6 +307,14 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
                 let row_sum = (m + s.ln()).exp();
                 max_err = max_err.max((row_sum - 1.0).abs());
             }
+            for j in 0..n {
+                let mut col_sum = 0.0;
+                for i in 0..n {
+                    col_sum += (log_u[i] + log_k[i * n + j] + log_v[j]).exp();
+                }
+                max_err = max_err.max((col_sum - 1.0).abs());
+            }
+            residual = max_err;
             if max_err < config.tol {
                 break;
             }
@@ -271,7 +329,18 @@ pub fn sinkhorn_permutation(values: &[f64], config: &SinkhornConfig) -> Result<V
         }
     }
 
-    Ok(p)
+    if residual >= config.tol {
+        return Err(Error::SinkhornDidNotConverge {
+            iterations,
+            residual,
+        });
+    }
+
+    Ok(SinkhornOutput {
+        matrix: p,
+        iterations,
+        residual,
+    })
 }
 
 /// Compute soft ranks via Sinkhorn optimal transport.
@@ -612,6 +681,108 @@ mod tests {
                 col_sum
             );
         }
+    }
+
+    #[test]
+    fn one_iteration_reports_nonconvergence_and_finite_marginal_residual() {
+        let config = SinkhornConfig {
+            epsilon: 0.001,
+            max_iter: 1,
+            tol: 1e-12,
+        };
+        let error = sinkhorn_permutation(&[0.0, 1.0, 100.0], &config).unwrap_err();
+        match error {
+            Error::SinkhornDidNotConverge {
+                iterations,
+                residual,
+            } => {
+                assert_eq!(iterations, 1);
+                assert!(residual.is_finite());
+                assert!(residual >= config.tol);
+                assert_eq!(residual, 0.5);
+            }
+            other => panic!("expected nonconvergence, got {other}"),
+        }
+    }
+
+    #[test]
+    fn converged_diagnostics_bound_every_marginal() {
+        let values = [0.0, 1.0, 100.0];
+        let config = SinkhornConfig {
+            epsilon: 0.001,
+            max_iter: 10_000,
+            tol: 1e-4,
+        };
+        let output = sinkhorn_permutation_with_diagnostics(&values, &config).unwrap();
+        assert!(output.iterations <= config.max_iter);
+        assert!(output.residual < config.tol);
+        for i in 0..values.len() {
+            let sum: f64 = (0..values.len())
+                .map(|j| output.matrix[i * values.len() + j])
+                .sum();
+            assert!((sum - 1.0).abs() <= output.residual + 1e-15);
+        }
+        for j in 0..values.len() {
+            let sum: f64 = (0..values.len())
+                .map(|i| output.matrix[i * values.len() + j])
+                .sum();
+            assert!((sum - 1.0).abs() <= output.residual + 1e-15);
+        }
+    }
+
+    #[test]
+    fn standardization_is_affine_and_large_scale_invariant() {
+        let base = [-2.0, 0.5, 3.0, 8.0];
+        let affine: Vec<_> = base.iter().map(|value| 17.0 * value + 40.0).collect();
+        let huge: Vec<_> = base.iter().map(|value| value * 1e300).collect();
+        let config = SinkhornConfig {
+            epsilon: 0.2,
+            max_iter: 1_000,
+            tol: 1e-10,
+        };
+        let expected = sinkhorn_permutation(&base, &config).unwrap();
+        for transformed in [&affine, &huge] {
+            let actual = sinkhorn_permutation(transformed, &config).unwrap();
+            for (left, right) in expected.iter().zip(actual) {
+                assert!((left - right).abs() < 1e-10, "{left} != {right}");
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_config_and_non_finite_values() {
+        let config = SinkhornConfig {
+            max_iter: 0,
+            ..Default::default()
+        };
+        assert!(matches!(
+            sinkhorn_permutation(&[1.0, 2.0], &config),
+            Err(Error::InvalidSinkhornConfig(_))
+        ));
+
+        let config = SinkhornConfig {
+            max_iter: 10,
+            tol: f64::NAN,
+            ..Default::default()
+        };
+        assert!(matches!(
+            sinkhorn_permutation(&[1.0, 2.0], &config),
+            Err(Error::InvalidSinkhornConfig(_))
+        ));
+
+        let config = SinkhornConfig::default();
+        assert!(matches!(
+            sinkhorn_permutation(&[1.0, f64::INFINITY], &config),
+            Err(Error::NonFiniteInput)
+        ));
+        let config = SinkhornConfig {
+            epsilon: f64::INFINITY,
+            ..Default::default()
+        };
+        assert!(matches!(
+            sinkhorn_permutation(&[1.0, 2.0], &config),
+            Err(Error::InvalidTemperature(_))
+        ));
     }
 
     #[test]

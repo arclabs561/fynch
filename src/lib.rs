@@ -173,7 +173,10 @@ pub use fenchel::{
 #[allow(deprecated)]
 pub use metrics::{compute_rank, hits_at_k, mean_rank, mrr, ndcg, ndcg_at_k, RankingMetrics};
 pub use sigmoid::{sigmoid, sigmoid_derivative};
-pub use sinkhorn::{sinkhorn_rank, sinkhorn_sort, SinkhornConfig};
+pub use sinkhorn::{
+    sinkhorn_permutation_with_diagnostics, sinkhorn_rank, sinkhorn_sort, SinkhornConfig,
+    SinkhornOutput,
+};
 pub use sparsemap::{
     sparsemap_explicit, sparsemap_loss_explicit, SparseMapPrediction, SparseMapWeight,
 };
@@ -204,6 +207,14 @@ pub enum Error {
 
     #[error("input contains a non-finite value")]
     NonFiniteInput,
+
+    #[error("invalid Sinkhorn configuration: {0}")]
+    InvalidSinkhornConfig(&'static str),
+
+    #[error(
+        "Sinkhorn iteration did not converge after {iterations} iterations (marginal residual {residual})"
+    )]
+    SinkhornDidNotConverge { iterations: usize, residual: f64 },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

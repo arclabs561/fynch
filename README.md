@@ -9,18 +9,14 @@ Dual-licensed under MIT or Apache-2.0.
 
 ## What it does
 
-Sorting, ranking, and argmax are discontinuous: a small change in scores can
-flip two ranks or move probability mass entirely onto a different element, so
-their gradient is zero almost everywhere and undefined at the jumps. That blocks
-training any model whose loss runs through a sort or an argmax. fynch provides
-smoothed (differentiable) replacements that pass gradients: soft ranks and soft
-sorts in place of argsort, and the entmax/sparsemax/softmax family in place of a
-hard argmax. These come from the Fenchel-Young framework (Blondel, Martins,
-Niculae 2020), which derives a prediction function and a matching convex loss
-from one regularizer Omega, so cross-entropy, sparsemax, and entmax are the same
-construction with different Omega. Typical uses are learning-to-rank, top-k
-selection, attention with sparse weights, and any pipeline where a hard sort or
-argmax sits between the model and the loss.
+fynch provides smooth numerical approximations to sorting, ranking, and simplex
+prediction. It includes soft ranks and sorts, the entmax/sparsemax/softmax
+family, and selected loss and curvature helpers. The crate provides forward
+computations; it does not integrate with an autodiff runtime.
+
+The simplex predictors use the Fenchel-Young framework (Blondel, Martins, and
+Niculae 2020), which derives a prediction function and matching convex loss
+from one regularizer.
 
 ## Quickstart
 
@@ -43,7 +39,7 @@ let tunable = entmax(&theta, 1.5); // between the two
 // Isotonic regression (PAVA): nearest non-decreasing fit.
 let monotonic = pava(&[3.0, 1.0, 2.0, 5.0, 4.0]);
 
-// Differentiable ranks: a continuous, backprop-friendly stand-in for argsort.
+// Smooth ranks: a continuous numerical stand-in for argsort.
 let ranks = soft_rank(&[0.5, 0.2, 0.8, 0.1], 0.1).unwrap();
 ```
 
@@ -54,7 +50,7 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 
 - `fenchel`: the generic framework (regularizers, prediction functions, losses).
 - `sinkhorn`: entropic optimal transport for soft permutations.
-- `lapsum`: LapSum unified soft sort, rank, and top-k.
+- `lapsum`: pairwise Laplacian-kernel approximations to sort, rank, and top-k.
 - `loss`: learning-to-rank losses (Spearman, ListNet).
 - `metrics`: IR evaluation (MRR, NDCG, Hits@k).
 

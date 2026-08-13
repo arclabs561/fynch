@@ -190,8 +190,9 @@ pub fn differentiable_bottomk(values: &[f64], k: usize, temperature: f64) -> (Ve
 /// The algorithm:
 /// 1. Forward pass through the sorting network, recording the soft
 ///    comparator weight (alpha) at each stage.
-/// 2. Initialize a selector matrix X = I_n\[:, n-k:\] (selects the last
-///    k output positions, which hold the top-k after ascending sort).
+/// 2. Initialize a selector matrix from output positions `n-k..n`, the last
+///    k real positions after ascending sort. For a padded bitonic network,
+///    positions `n..padded_n` belong to padding and are not selected.
 /// 3. Backward pass through comparators in reverse order, propagating X
 ///    through the inverse soft permutation at each stage.
 ///
@@ -279,13 +280,14 @@ pub fn sparse_topk_matrix(
         vals[b] = alpha * va + (1.0 - alpha) * vb;
     }
 
-    // Initialize selector: last k columns of the padded_n x padded_n identity.
-    // After ascending sort, the last k positions hold the k largest values.
+    // Initialize selector from the last k real sorted output positions.
+    // Bitonic padding sorts after all real values, so selecting the padded
+    // tail would attribute top-k membership to padding rather than inputs.
     // X is padded_n x k.
     let mut x = vec![vec![0.0; k]; padded_n];
     #[allow(clippy::needless_range_loop)] // j indexes both col computation and inner vec
     for j in 0..k {
-        let col = padded_n - k + j;
+        let col = n - k + j;
         x[col][j] = 1.0;
     }
 
@@ -837,6 +839,43 @@ mod tests {
         assert_eq!(a.len(), 3, "should have n=3 rows despite padding");
         for row in &a {
             assert_eq!(row.len(), 2);
+        }
+    }
+
+    #[test]
+    fn sparse_topk_bitonic_padding_selects_real_outputs() {
+        for (scores, ks) in [
+            (vec![2.0, 5.0, 1.0], vec![1, 2]),
+            (vec![4.0, 1.0, 6.0, 2.0, 5.0], vec![1, 3]),
+            (vec![3.0, 8.0, 1.0, 7.0, 2.0, 6.0], vec![1, 2, 4]),
+        ] {
+            for k in ks {
+                let attr = sparse_topk_matrix(
+                    &scores,
+                    k,
+                    1_000.0,
+                    NetworkType::Bitonic,
+                    RelaxDist::Logistic,
+                )
+                .unwrap();
+
+                let mut expected: Vec<(usize, f64)> = scores.iter().copied().enumerate().collect();
+                expected.sort_by(|a, b| a.1.total_cmp(&b.1));
+                let expected = &expected[scores.len() - k..];
+
+                for (column, &(input, _)) in expected.iter().enumerate() {
+                    assert_eq!(
+                        attr[input][column],
+                        1.0,
+                        "n={}, k={k}, column={column}, attribution={attr:?}",
+                        scores.len()
+                    );
+                }
+                for column in 0..k {
+                    let column_sum: f64 = attr.iter().map(|row| row[column]).sum();
+                    assert_eq!(column_sum, 1.0);
+                }
+            }
         }
     }
 

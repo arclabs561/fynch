@@ -209,7 +209,7 @@ impl Regularizer for SquaredL2 {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Tsallis {
-    /// The α parameter. α=1 → Shannon, α=2 → sparsemax.
+    /// The α parameter. The limit α→1 is Shannon; α=2 is sparsemax.
     pub alpha: f64,
 }
 
@@ -218,9 +218,12 @@ impl Tsallis {
     ///
     /// # Panics
     ///
-    /// Panics if α ≤ 0.
+    /// Panics if α is not finite or α ≤ 1.
     pub fn new(alpha: f64) -> Self {
-        assert!(alpha > 0.0, "alpha must be positive");
+        assert!(
+            alpha.is_finite() && alpha > 1.0,
+            "alpha must be finite and greater than 1"
+        );
         Self { alpha }
     }
 
@@ -371,9 +374,8 @@ pub fn sparsemax_loss(theta: &[f64], y: &[f64]) -> f64 {
 
 /// α-entmax: sparse transformation with tunable sparsity.
 ///
-/// For α = 1: softmax (dense)
 /// For α = 2: sparsemax (sparse)
-/// For 1 < α < 2: interpolates
+/// For 1 < α < 2: interpolates between softmax and sparsemax
 ///
 /// # Algorithm
 ///
@@ -382,30 +384,43 @@ pub fn sparsemax_loss(theta: &[f64], y: &[f64]) -> f64 {
 /// # References
 ///
 /// Peters, Niculae, Martins (2019). "Sparse Sequence-to-Sequence Models"
+///
+/// # Panics
+///
+/// Panics if `alpha` is not finite or is at most 1, or if any score is not
+/// finite.
 pub fn entmax(theta: &[f64], alpha: f64) -> Vec<f64> {
+    assert!(
+        alpha.is_finite() && alpha > 1.0,
+        "alpha must be finite and greater than 1"
+    );
+    assert!(
+        theta.iter().all(|score| score.is_finite()),
+        "scores must be finite"
+    );
+
     if theta.is_empty() {
         return vec![];
-    }
-    if (alpha - 1.0).abs() < 1e-10 {
-        return softmax(theta);
     }
     if (alpha - 2.0).abs() < 1e-10 {
         return sparsemax(theta);
     }
 
-    // Find max for numerical stability
-    let max_theta = theta.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+    let alpha_minus_one = alpha - 1.0;
+    let scaled: Vec<f64> = theta.iter().map(|&score| score * alpha_minus_one).collect();
+    let max_scaled = scaled.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-    // Bisection to find τ
-    let mut tau_lo = max_theta - 10.0;
-    let mut tau_hi = max_theta;
+    // These bounds bracket a distribution ranging from a single active entry
+    // to all entries sharing equal mass.
+    let mut tau_lo = max_scaled - 1.0;
+    let mut tau_hi = max_scaled - (1.0 / theta.len() as f64).powf(alpha_minus_one);
 
     // Precompute the exponent once; it is constant throughout bisection.
-    let inv_alpha_m1 = 1.0 / (alpha - 1.0);
+    let inv_alpha_m1 = 1.0 / alpha_minus_one;
 
     for _ in 0..50 {
         let tau = (tau_lo + tau_hi) / 2.0;
-        let sum: f64 = theta
+        let sum: f64 = scaled
             .iter()
             .map(|&t| ((t - tau).max(0.0)).powf(inv_alpha_m1))
             .sum();
@@ -420,7 +435,7 @@ pub fn entmax(theta: &[f64], alpha: f64) -> Vec<f64> {
     let tau = (tau_lo + tau_hi) / 2.0;
 
     // Compute output
-    let mut result: Vec<f64> = theta
+    let mut result: Vec<f64> = scaled
         .iter()
         .map(|&t| ((t - tau).max(0.0)).powf(inv_alpha_m1))
         .collect();
@@ -567,16 +582,91 @@ mod tests {
     fn test_entmax_interpolates() {
         let theta = [2.0, 1.0, 0.1];
 
-        // α = 1: softmax (dense)
-        let p1 = entmax(&theta, 1.0);
-        assert!(p1.iter().all(|&x| x > 0.0), "α=1 should be dense");
-
         // α = 2: sparsemax (sparse)
         let p2 = entmax(&theta, 2.0);
         let sparse2 = sparsemax(&theta);
         for (a, b) in p2.iter().zip(&sparse2) {
             assert!((a - b).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn entmax_matches_deep_spin_reference() {
+        // Generated with deep-spin/entmax's EntmaxBisectFunction at commit
+        // c2bec6d5e7d649cba7766c2172d89123ec2a6d70, using float64 and 200
+        // bisection iterations.
+        let theta = [-2.0, 0.0, 0.5];
+        let cases = [
+            (
+                1.2,
+                [
+                    0.011_976_018_697_138_558,
+                    0.354_586_710_905_667_24,
+                    0.633_437_270_397_194_3,
+                ],
+            ),
+            (
+                1.5,
+                [0.0, 0.326_007_363_661_561_86, 0.673_992_636_338_438_2],
+            ),
+            (1.9, [0.0, 0.267_733_172_292_558_5, 0.732_266_827_707_441_6]),
+        ];
+
+        for (alpha, expected) in cases {
+            let actual = entmax(&theta, alpha);
+            for (got, want) in actual.iter().zip(expected) {
+                assert!((got - want).abs() < 1e-12, "alpha={alpha}: {got} != {want}");
+            }
+        }
+    }
+
+    #[test]
+    fn entmax_scales_scores_before_thresholding() {
+        // Omitting the (alpha - 1) scale incorrectly maps this input to the
+        // one-hot distribution at alpha=1.5.
+        let actual = entmax(&[2.0, 1.0, 0.1], 1.5);
+        let expected = [0.830_718_913_883_073_8, 0.169_281_086_116_926_16, 0.0];
+        for (got, want) in actual.iter().zip(expected) {
+            assert!((got - want).abs() < 1e-12, "{got} != {want}");
+        }
+    }
+
+    #[test]
+    fn entmax_is_translation_invariant() {
+        let theta = [-2.0, 0.0, 0.5];
+        for alpha in [1.2, 1.5, 1.9, 2.0, 2.5] {
+            let expected = entmax(&theta, alpha);
+            let shifted: Vec<f64> = theta.iter().map(|score| score + 1_000.0).collect();
+            let actual = entmax(&shifted, alpha);
+            for (got, want) in actual.iter().zip(expected) {
+                assert!((got - want).abs() < 1e-11, "alpha={alpha}: {got} != {want}");
+            }
+        }
+    }
+
+    #[test]
+    fn entmax_alpha_two_is_sparsemax() {
+        for theta in [[-2.0, 0.0, 0.5], [2.0, 1.0, 0.1], [1.0, 1.0, 1.0]] {
+            assert_eq!(entmax(&theta, 2.0), sparsemax(&theta));
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "alpha must be finite and greater than 1")]
+    fn entmax_rejects_alpha_one() {
+        let _ = entmax(&[1.0, 2.0], 1.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "alpha must be finite and greater than 1")]
+    fn tsallis_rejects_non_finite_alpha() {
+        let _ = Tsallis::new(f64::NAN);
+    }
+
+    #[test]
+    #[should_panic(expected = "scores must be finite")]
+    fn entmax_rejects_non_finite_scores() {
+        let _ = entmax(&[1.0, f64::INFINITY], 1.5);
     }
 
     #[test]

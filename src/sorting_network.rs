@@ -30,7 +30,7 @@
 //! let (sorted, perm) = net.sort(&x).unwrap();
 //!
 //! // sorted is approximately [1, 2, 3, 4]
-//! // perm is an n x n soft permutation matrix: sort(x) ≈ x @ perm
+//! // perm is an n x n soft permutation matrix: sort(x) ≈ perm @ x
 //! assert_eq!(perm.len(), 4);
 //! assert_eq!(perm[0].len(), 4);
 //! ```
@@ -111,8 +111,9 @@ impl DiffSortNet {
 
     /// Sort the input, returning (sorted_values, soft_permutation_matrix).
     ///
-    /// The permutation matrix P satisfies: `sorted ≈ x @ P` (row convention).
-    /// `P[i][j]` is the soft weight of input position i contributing to output position j.
+    /// The permutation matrix `P` satisfies `sorted ≈ P * x` (with `x` treated
+    /// as a column vector). `P[output][input]` is the soft weight of an input
+    /// position contributing to a sorted output position.
     pub fn sort(&self, x: &[f64]) -> Result<(Vec<f64>, Vec<Vec<f64>>)> {
         if x.is_empty() {
             return Err(Error::EmptyInput);
@@ -135,7 +136,7 @@ impl DiffSortNet {
         }
 
         // Flat row-major permutation matrix (n * n) for cache-friendly access.
-        // perm_flat[i * n + j] = P[i][j]
+        // perm_flat[output * n + input] = P[output][input]
         let mut perm_flat = vec![0.0_f64; n * n];
         for i in 0..n {
             perm_flat[i * n + i] = 1.0;
@@ -344,17 +345,20 @@ pub fn odd_even_sort(x: &[f64], steepness: f64) -> Result<(Vec<f64>, Vec<Vec<f64
 
 /// Extract soft ranks from a permutation matrix.
 ///
-/// Given P where `sorted = x @ P`, the rank of element i is the weighted
-/// column index: `rank_i = sum_j j * P[i][j]`.
+/// Given `P` where `sorted = P * x`, the rank of input element `i` is the
+/// weighted output index: `rank_i = sum_j (j + 1) * P[j][i]`.
+/// Ranks are one-based and ascending, so rank 1 is the smallest value.
 pub fn ranks_from_permutation(perm: &[Vec<f64>]) -> Vec<f64> {
-    perm.iter()
-        .map(|row| {
-            row.iter()
-                .enumerate()
-                .map(|(j, &p)| (j as f64 + 1.0) * p)
-                .sum()
-        })
-        .collect()
+    let input_count = perm.iter().map(Vec::len).max().unwrap_or(0);
+    let mut ranks = vec![0.0; input_count];
+
+    for (output, row) in perm.iter().enumerate() {
+        for (input, &weight) in row.iter().enumerate() {
+            ranks[input] += (output as f64 + 1.0) * weight;
+        }
+    }
+
+    ranks
 }
 
 #[cfg(test)]
@@ -480,6 +484,28 @@ mod tests {
         // All ranks should be in [1, n] range
         for &r in &ranks {
             assert!((0.5..=4.5).contains(&r), "Rank out of range: {r}");
+        }
+    }
+
+    #[test]
+    fn hard_limit_permutation_reconstructs_sorted_values_and_input_ranks() {
+        for (x, expected_ranks) in [
+            (vec![3.0, 1.0, 4.0, 2.0], vec![3.0, 1.0, 4.0, 2.0]),
+            (vec![2.0, 5.0, 1.0], vec![2.0, 3.0, 1.0]),
+        ] {
+            let (sorted, perm) = bitonic_sort(&x, 1_000.0).unwrap();
+
+            let reconstructed: Vec<f64> = perm
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .zip(&x)
+                        .map(|(weight, value)| weight * value)
+                        .sum()
+                })
+                .collect();
+            assert_eq!(reconstructed, sorted);
+            assert_eq!(ranks_from_permutation(&perm), expected_ranks);
         }
     }
 

@@ -477,14 +477,17 @@ pub fn topk_ce_loss(logits: &[f64], target: usize, p_k: &[f64], steepness: f64) 
     )
 }
 
-/// Gumbel-Softmax utilities for stochastic top-k selection.
+/// Numeric Gumbel-Softmax utilities for stochastic top-k selection.
+///
+/// These functions return plain numeric values and do not create an
+/// automatic-differentiation graph.
 #[cfg(feature = "gumbel")]
 pub mod gumbel {
     use rand::Rng;
 
     /// Generate Gumbel noise: G = -log(-log(U)) where U ~ Uniform(0, 1).
     ///
-    /// Used in the Gumbel-Softmax trick for differentiable categorical sampling.
+    /// Used in the Gumbel-Softmax trick for numerical categorical sampling.
     ///
     /// # Example
     ///
@@ -511,7 +514,7 @@ pub mod gumbel {
             .collect()
     }
 
-    /// Gumbel-Softmax: differentiable approximation to categorical sampling.
+    /// Gumbel-Softmax: numerical relaxation of categorical sampling.
     ///
     /// Returns a soft one-hot vector that approaches a hard one-hot as
     /// temperature -> 0.

@@ -27,7 +27,7 @@ logp = { version = "0.2", optional = true }
 
 # Optional: SIMD primitives
 # Optional: Stochastic sampling
-drawset = { version = "0.1.0", optional = true }
+drawset = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
 approx = "0.5"

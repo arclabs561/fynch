@@ -7,6 +7,9 @@
   mislabeled rank "Hessian" with explicit Jacobian-sensitivity and loss-Hessian
   helpers. Curvature inputs now reject non-finite values and temperatures.
 
+### Changed
+- The optional `gumbel` feature now requires `drawset` 0.1.2.
+
 ## [0.3.2] - 2026-07-07
 
 ### Changed

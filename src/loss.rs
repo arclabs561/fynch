@@ -212,11 +212,7 @@ pub fn listmle_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
 
     // Get target ranking order (descending by target score)
     let mut target_order: Vec<usize> = (0..n).collect();
-    target_order.sort_unstable_by(|&a, &b| {
-        targets[b]
-            .partial_cmp(&targets[a])
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    target_order.sort_unstable_by(|&a, &b| targets[b].total_cmp(&targets[a]));
 
     // ListMLE is defined on scores: it models a distribution over permutations
     // induced by sequential Plackett–Luce choices (exp(score)).

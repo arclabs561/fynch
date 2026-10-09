@@ -324,7 +324,7 @@ pub fn sparsemax(theta: &[f64]) -> Vec<f64> {
 
     // Sort descending
     let mut sorted: Vec<f64> = theta.to_vec();
-    sorted.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_by(|a, b| b.total_cmp(a));
 
     // Find k = max { j : 1 + j θ_(j) > Σᵢ≤j θ_(i) }
     let mut cumsum = 0.0;
@@ -553,6 +553,28 @@ pub fn entmax15_loss(theta: &[f64], y: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// NaN in the input must not panic the descending sort (Rust >= 1.81
+    /// may panic on a comparator that is not a total order).
+    #[test]
+    fn sparsemax_tolerates_nan_without_panicking() {
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        for _ in 0..50 {
+            let theta: Vec<f64> = (0..100)
+                .map(|_| {
+                    state ^= state << 13;
+                    state ^= state >> 7;
+                    state ^= state << 17;
+                    if state % 10 == 0 {
+                        f64::NAN
+                    } else {
+                        (state % 1000) as f64 / 100.0
+                    }
+                })
+                .collect();
+            let _ = sparsemax(&theta);
+        }
+    }
 
     #[test]
     fn test_softmax_sums_to_one() {

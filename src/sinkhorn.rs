@@ -653,6 +653,40 @@ mod tests {
         }
     }
 
+    /// Row and column sums stay at 1 for small epsilon, down to 1e-3,
+    /// within the default tolerance of 1e-3 (the test above uses 1e-2).
+    #[test]
+    fn marginals_hold_down_to_small_epsilon() {
+        let values = [0.3, -1.2, 2.5, 0.31, 1.7, -0.4, 0.9, 0.0];
+        let n = values.len();
+        for epsilon in [1e-1, 1e-2, 1e-3] {
+            let config = SinkhornConfig {
+                epsilon,
+                max_iter: 100_000,
+                tol: 1e-3,
+            };
+            let out = sinkhorn_permutation_with_diagnostics(&values, &config)
+                .unwrap_or_else(|e| panic!("epsilon {epsilon}: {e:?}"));
+            assert!(
+                out.residual <= 1e-3,
+                "epsilon {epsilon}: residual {}",
+                out.residual
+            );
+            for i in 0..n {
+                let row: f64 = (0..n).map(|j| out.matrix[i * n + j]).sum();
+                let col: f64 = (0..n).map(|j| out.matrix[j * n + i]).sum();
+                assert!(
+                    (row - 1.0).abs() <= 1e-3,
+                    "epsilon {epsilon}: row {i} sums to {row}"
+                );
+                assert!(
+                    (col - 1.0).abs() <= 1e-3,
+                    "epsilon {epsilon}: col {i} sums to {col}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn test_doubly_stochastic() {
         let values = vec![3.0, 1.0, 2.0, 4.0];

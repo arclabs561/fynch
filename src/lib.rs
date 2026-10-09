@@ -151,6 +151,11 @@
 //! - Blondel et al. (2020). "Fast Differentiable Sorting and Ranking"
 //! - Cuturi et al. (2019). "Differentiable Ranking via Optimal Transport"
 
+/// Compiles and runs the README's Rust examples as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;
+
 #[cfg(feature = "logp")]
 mod bregman;
 pub mod curvature;
@@ -567,18 +572,24 @@ pub fn reciprocal_rank_fusion<T: std::hash::Hash + Eq + Clone>(
     k: usize,
 ) -> Vec<(T, f64)> {
     use std::collections::HashMap;
-    let mut scores = HashMap::new();
+    // Value is (score, first-seen position) so ties keep a fixed order
+    // instead of HashMap iteration order.
+    let mut scores: HashMap<T, (f64, usize)> = HashMap::new();
 
     for ranking in rankings {
         for (rank, id) in ranking.iter().enumerate() {
             let score = 1.0 / (k as f64 + (rank + 1) as f64);
-            *scores.entry(id.clone()).or_insert(0.0) += score;
+            let first_seen = scores.len();
+            scores.entry(id.clone()).or_insert((0.0, first_seen)).0 += score;
         }
     }
 
     let mut fused: Vec<_> = scores.into_iter().collect();
-    fused.sort_by(|a, b| b.1.total_cmp(&a.1));
+    fused.sort_by(|a, b| b.1 .0.total_cmp(&a.1 .0).then(a.1 .1.cmp(&b.1 .1)));
     fused
+        .into_iter()
+        .map(|(id, (score, _))| (id, score))
+        .collect()
 }
 
 /// Isotonic regression with L2 loss.
@@ -620,6 +631,21 @@ pub fn soft_topk_indicator(x: &[f64], k: usize, temperature: f64) -> Result<Vec<
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+
+    /// Tied fused scores must come back in the same order on every call.
+    #[test]
+    #[allow(deprecated)]
+    fn rrf_tie_order_is_deterministic() {
+        let a: Vec<u32> = (0..10).collect();
+        let b: Vec<u32> = (0..10).rev().collect();
+        let first = reciprocal_rank_fusion(&[a.clone(), b.clone()], 60);
+        for _ in 0..200 {
+            assert_eq!(reciprocal_rank_fusion(&[a.clone(), b.clone()], 60), first);
+        }
+        // Ties break by first appearance: 0 and 9 tie, 0 was seen first.
+        assert_eq!(first[0].0, 0);
+        assert_eq!(first[1].0, 9);
+    }
 
     #[test]
     fn test_pava_simple() {

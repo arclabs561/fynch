@@ -385,6 +385,10 @@ pub fn pava_weighted(y: &[f64], weights: &[f64]) -> Result<Vec<f64>> {
 ///
 /// Returns continuous approximation to ranks. As τ → 0, converges to hard ranks.
 ///
+/// **Direction: descending.** The largest value tends to rank 1 and the
+/// smallest to rank `n`. [`fast_soft_rank`] and [`lapsum::lapsum_soft_rank`]
+/// are ascending (smallest value ranks 1); use `n + 1 - rank` to convert.
+///
 /// # Algorithm
 ///
 /// Uses the soft-rank formulation via pairwise comparisons:
@@ -665,6 +669,23 @@ mod tests {
         assert!(ranks[3] < ranks[1]); // 0.9 ranks higher than 0.5
         assert!(ranks[1] < ranks[2]); // 0.5 ranks higher than 0.2
         assert!(ranks[2] < ranks[0]); // 0.2 ranks higher than 0.1
+    }
+
+    #[test]
+    fn soft_rank_directions_are_documented_conventions() {
+        // soft_rank is descending (max -> ~1); fast_soft_rank and
+        // lapsum_soft_rank are ascending (max -> ~n).
+        let x = [0.1, 0.5, 0.2, 0.9];
+        let imax = 3;
+        let desc = soft_rank(&x, 0.01).unwrap();
+        let fast = fast_soft_rank(&x, 0.01).unwrap();
+        let lap = lapsum::lapsum_soft_rank(&x, 0.01).unwrap();
+        assert!((desc[imax] - 1.0).abs() < 0.1, "{desc:?}");
+        assert!((fast[imax] - 4.0).abs() < 0.1, "{fast:?}");
+        assert!((lap[imax] - 4.0).abs() < 0.1, "{lap:?}");
+        for i in 0..x.len() {
+            assert!((desc[i] + fast[i] - 5.0).abs() < 0.1, "i={i}");
+        }
     }
 
     #[test]

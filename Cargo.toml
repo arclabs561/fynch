@@ -32,7 +32,7 @@ logp = ["dep:logp"]
 [dependencies]
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
-rand = { version = "0.9", optional = true }
+rand = { version = "0.10", optional = true }
 logp = { version = "0.2", optional = true }
 
 # Optional: SIMD primitives
@@ -43,7 +43,7 @@ drawset = { version = "0.1.2", optional = true }
 approx = "0.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.5"
-rand = "0.9"
+rand = "0.10"
 rankit = { version = "0.1", features = ["losses"] }
 rankops = { version = "0.2", default-features = false }
 serde_json = "1.0"

@@ -9,6 +9,9 @@
 
 ### Changed
 - The optional `gumbel` feature now requires `drawset` 0.1.2.
+- The `soft_rank_shootout` example moved to rankit, which already depends on
+  fynch; fynch no longer has a rankit dev-dependency (it built a second copy
+  of fynch for tests).
 
 ## [0.3.2] - 2026-07-07
 

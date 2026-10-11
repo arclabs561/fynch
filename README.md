@@ -68,8 +68,6 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 
 Runnable examples live in [`examples/`](examples/):
 
-- `soft_rank_shootout` compares fynch and rankit ranking methods on data with a
-  known ground-truth order, measuring how closely each recovers the true ranks.
 - `soft_estimator_validation` checks the soft estimators against exact
   references: `soft_rank` and `soft_sort` collapsing to their hard counterparts
   as temperature goes to zero, and PAVA against hand-computed isotonic fits.

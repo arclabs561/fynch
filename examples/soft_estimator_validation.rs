@@ -14,7 +14,9 @@
 
 use std::process::ExitCode;
 
-use fynch::{pava, soft_rank, soft_sort};
+use fynch::{
+    pava, sinkhorn_permutation_with_diagnostics, soft_rank, soft_sort, Error, SinkhornConfig,
+};
 
 fn main() -> ExitCode {
     let mut failures = 0u64;
@@ -59,7 +61,46 @@ fn main() -> ExitCode {
         let x: Vec<f64> = (0..n).map(|_| next() * 10.0).collect();
         let mut sorted = x.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let out = soft_sort(&x, 0.01).expect("soft_sort");
+        let out = match soft_sort(&x, 0.01) {
+            Ok(out) => out,
+            Err(Error::SinkhornDidNotConverge { .. }) => {
+                // Sharp kernels can exceed the convenience wrapper's iteration
+                // budget. Retry the same problem with the same tolerance; do
+                // not accept an unfinished coupling or substitute a hard sort.
+                let config = SinkhornConfig {
+                    epsilon: 0.01,
+                    max_iter: 100_000,
+                    ..Default::default()
+                };
+                let output = match sinkhorn_permutation_with_diagnostics(&x, &config) {
+                    Ok(output) => output,
+                    Err(error) => {
+                        eprintln!("FAIL: soft_sort trial {trial}: {error}");
+                        return ExitCode::FAILURE;
+                    }
+                };
+                println!(
+                    "soft_sort trial {trial}: converged with extended budget after {} iterations (residual {})",
+                    output.iterations, output.residual
+                );
+                for i in 0..n {
+                    let row: f64 = (0..n).map(|j| output.matrix[i * n + j]).sum();
+                    let col: f64 = (0..n).map(|j| output.matrix[j * n + i]).sum();
+                    check(
+                        (row - 1.0).abs() < config.tol && (col - 1.0).abs() < config.tol,
+                        format!("soft_sort trial {trial}: invalid marginal {i}"),
+                    );
+                }
+                // The same barycentric projection used by sinkhorn_sort: Pᵀx.
+                (0..n)
+                    .map(|j| (0..n).map(|i| output.matrix[i * n + j] * x[i]).sum())
+                    .collect()
+            }
+            Err(error) => {
+                eprintln!("FAIL: soft_sort trial {trial}: {error}");
+                return ExitCode::FAILURE;
+            }
+        };
         for i in 1..n {
             check(
                 out[i] >= out[i - 1] - 1e-6,

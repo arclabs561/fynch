@@ -39,9 +39,12 @@ let tunable = entmax(&theta, 1.5); // between the two
 // Isotonic regression (PAVA): nearest non-decreasing fit.
 let monotonic = pava(&[3.0, 1.0, 2.0, 5.0, 4.0]);
 
-// Smooth ranks: a continuous numerical stand-in for argsort.
+// Smooth ranks in input order: the largest score approaches rank 1.
 let ranks = soft_rank(&[0.5, 0.2, 0.8, 0.1], 0.1).unwrap();
 ```
+
+`soft_rank` uses descending ranks; `fast_soft_rank` uses ascending ranks.
+Neither returns the index permutation produced by argsort.
 
 Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 (discrete) result; higher temperature smooths them out.

@@ -6,6 +6,13 @@
 - Corrected the sign of the pairwise soft-rank loss gradient and replaced the
   mislabeled rank "Hessian" with explicit Jacobian-sensitivity and loss-Hessian
   helpers. Curvature inputs now reject non-finite values and temperatures.
+- `sinkhorn_rank`, `sinkhorn_sort` and `soft_sort` no longer return
+  `SinkhornDidNotConverge` on ordinary inputs at temperatures such as 0.05 and
+  0.01: the iteration budget now scales as 100/epsilon (between 1,000 and
+  100,000) instead of a fixed 200 or 2,000.
+- `listnet_loss` uses the log-softmax of the predictions instead of
+  `ln(p + 1e-10)`, which capped each term at about 23 and flattened the loss
+  for confident wrong predictions.
 
 ### Changed
 - The optional `gumbel` feature now requires `drawset` 0.1.2.

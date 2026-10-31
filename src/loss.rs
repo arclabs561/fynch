@@ -163,13 +163,20 @@ pub fn listnet_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
     //
     // Using ranks here is subtle and easy to get wrong because our `soft_rank`
     // is 1-indexed with "better = smaller rank". Softmax would invert semantics.
-    let pred_probs = softmax_temp(predictions, temperature);
+    //
+    // log P_pred(i) is the log-softmax s_i / τ - logsumexp(s / τ), computed
+    // directly: taking ln of a softmax probability (plus an epsilon) caps each
+    // term near -ln(eps) and flattens the loss for confident wrong predictions.
+    // Reference: Cao et al. (2007), "Learning to Rank: From Pairwise Approach
+    // to Listwise Approach" (ICML), top-one probability and cross-entropy.
+    let scaled: Vec<f64> = predictions.iter().map(|&v| v / temperature).collect();
+    let lse = scaled.iter().copied().fold(f64::NEG_INFINITY, log_sum_exp);
     let target_probs = softmax_temp(targets, temperature);
 
     let mut loss = 0.0;
     for i in 0..n {
         if target_probs[i] > 1e-10 {
-            loss -= target_probs[i] * (pred_probs[i] + 1e-10).ln();
+            loss -= target_probs[i] * (scaled[i] - lse);
         }
     }
     loss
@@ -361,6 +368,14 @@ mod tests {
         let good = listnet_loss(&pred_good, &target, 1.0);
         let bad = listnet_loss(&pred_bad, &target, 1.0);
         assert!(good < bad, "good={} bad={}", good, bad);
+    }
+
+    #[test]
+    fn test_listnet_does_not_saturate() {
+        // Targets put all mass on item 0; log p_0 = -50 - ln(1 + e^-50), so the
+        // exact cross-entropy is 50 (to ~1e-22), not capped near -ln(1e-10).
+        let loss = listnet_loss(&[0.0, 50.0], &[100.0, 0.0], 1.0);
+        assert!((loss - 50.0).abs() < 1e-9, "loss={loss}");
     }
 
     #[test]

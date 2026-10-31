@@ -18,10 +18,6 @@ The simplex predictors use the Fenchel-Young framework (Blondel, Martins, and
 Niculae 2020), which derives a prediction function and matching convex loss
 from one regularizer.
 
-For training inside PyTorch, use torchsort or Google's fast-soft-sort, which
-implement the same Blondel et al. (2020) soft sort and rank with autodiff; use
-fynch for the forward computations from Rust.
-
 ## Quickstart
 
 ```toml
@@ -63,6 +59,12 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 - `sorting_network`: differentiable bitonic and odd-even sorting networks.
 - `sparsemap`: SparseMAP over an explicit finite structured domain.
 - `topk`: soft top-k selection.
+
+## Features
+
+- `gumbel`: Gumbel-Softmax and Gumbel top-k sampling in `topk::gumbel`.
+- `logp`: implements `logp::BregmanGenerator` for the `Shannon` and
+  `SquaredL2` regularizers.
 
 ## Examples
 

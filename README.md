@@ -22,7 +22,7 @@ from one regularizer.
 
 ```toml
 [dependencies]
-fynch = "0.3.2"
+fynch = "0.4.0"
 ```
 
 ```rust

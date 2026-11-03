@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-02
+
 ### Fixed
 - Corrected the sign of the pairwise soft-rank loss gradient and replaced the
   mislabeled rank "Hessian" with explicit Jacobian-sensitivity and loss-Hessian

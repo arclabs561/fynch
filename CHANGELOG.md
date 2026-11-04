@@ -11,6 +11,10 @@
   bitwise identical (pinned by `tests/logp_lse_parity.rs`). A `+inf` entry in
   the slice form, or `+inf` for both arguments of the pair form, now returns
   `+inf` instead of `NaN`.
+- `topk::differentiable_topk` and `topk::differentiable_bottomk` return one
+  zero per input value for `k = 0`, matching their per-element output
+  contract and the exact all-ones result for `k >= n`. They returned empty
+  vectors.
 
 ## [0.4.0] - 2026-11-02
 

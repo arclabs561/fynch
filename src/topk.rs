@@ -61,6 +61,9 @@ use crate::{Error, Result};
 /// - `weighted_values[i]` = values\[i\] * indicator\[i\]
 /// - `indicators[i]` in (0, 1) indicates soft membership in top-k
 ///
+/// Both vectors have one entry per input value. The edge cases are exact:
+/// `k = 0` gives all-zero indicators and `k >= n` gives all-one indicators.
+///
 /// # Example
 ///
 /// ```rust
@@ -81,7 +84,8 @@ use crate::{Error, Result};
 pub fn differentiable_topk(values: &[f64], k: usize, temperature: f64) -> (Vec<f64>, Vec<f64>) {
     let n = values.len();
     if n == 0 || k == 0 {
-        return (vec![], vec![]);
+        // Nothing is selected: one zero per input value.
+        return (vec![0.0; n], vec![0.0; n]);
     }
 
     // If k >= n, everything is in top-k
@@ -116,7 +120,8 @@ pub fn differentiable_topk(values: &[f64], k: usize, temperature: f64) -> (Vec<f
 
 /// Differentiable Bottom-K selection (k smallest values).
 ///
-/// Same as [`differentiable_topk`] but selects smallest values.
+/// Same as [`differentiable_topk`] but selects smallest values, with the same
+/// output shape: one entry per input value, all zeros for `k = 0`.
 ///
 /// # Note on Soft Ranks
 ///
@@ -141,7 +146,8 @@ pub fn differentiable_topk(values: &[f64], k: usize, temperature: f64) -> (Vec<f
 pub fn differentiable_bottomk(values: &[f64], k: usize, temperature: f64) -> (Vec<f64>, Vec<f64>) {
     let n = values.len();
     if n == 0 || k == 0 {
-        return (vec![], vec![]);
+        // Nothing is selected: one zero per input value.
+        return (vec![0.0; n], vec![0.0; n]);
     }
 
     if k >= n {
@@ -631,10 +637,15 @@ mod tests {
 
     #[test]
     fn test_topk_k_zero() {
+        // One indicator per element, as documented; top-0 selects nothing,
+        // so top-k(0) and bottom-k(n) stay complementary.
         let values = [1.0, 2.0, 3.0];
         let (w, i) = differentiable_topk(&values, 0, 0.1);
-        assert!(w.is_empty());
-        assert!(i.is_empty());
+        assert_eq!(w, vec![0.0; 3]);
+        assert_eq!(i, vec![0.0; 3]);
+        let (w, i) = differentiable_bottomk(&values, 0, 0.1);
+        assert_eq!(w, vec![0.0; 3]);
+        assert_eq!(i, vec![0.0; 3]);
     }
 
     #[test]

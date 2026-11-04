@@ -215,23 +215,6 @@ pub fn sinkhorn_permutation_with_diagnostics(
     //
     // Let logK[i,j] = -(C[i,j] - min(C)) / epsilon.
     // Then u,v updates become log-domain normalization steps via log-sum-exp.
-    #[allow(dead_code)]
-    fn log_sum_exp(xs: &[f64]) -> f64 {
-        let mut m = f64::NEG_INFINITY;
-        for &x in xs {
-            if x > m {
-                m = x;
-            }
-        }
-        if !m.is_finite() {
-            return f64::NEG_INFINITY;
-        }
-        let mut s = 0.0;
-        for &x in xs {
-            s += (x - m).exp();
-        }
-        m + s.ln()
-    }
 
     let inv_eps = 1.0 / config.epsilon;
     let min_cost = cost.iter().copied().fold(f64::INFINITY, |a, b| a.min(b));
@@ -479,22 +462,7 @@ mod tests {
         //
         // We test it at the log-kernel level to avoid changing public APIs.
 
-        fn log_sum_exp(xs: &[f64]) -> f64 {
-            let mut m = f64::NEG_INFINITY;
-            for &x in xs {
-                if x > m {
-                    m = x;
-                }
-            }
-            if !m.is_finite() {
-                return f64::NEG_INFINITY;
-            }
-            let mut s = 0.0;
-            for &x in xs {
-                s += (x - m).exp();
-            }
-            m + s.ln()
-        }
+        use logp::log_sum_exp;
 
         fn sinkhorn_from_log_k(log_k: &[f64], n: usize, config: &SinkhornConfig) -> Vec<f64> {
             let mut log_u = vec![0.0; n];

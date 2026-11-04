@@ -1,4 +1,4 @@
-//! Optional bridge from Fenchel-Young regularizers to `logp` Bregman generators.
+//! Bridge from Fenchel-Young regularizers to `logp` Bregman generators.
 //!
 //! The bridge is deliberately narrow. `fynch::Shannon` and `fynch::SquaredL2`
 //! have exact Bregman-generator counterparts in `logp`; Tsallis and SparseMAP

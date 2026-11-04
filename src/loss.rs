@@ -170,7 +170,10 @@ pub fn listnet_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
     // Reference: Cao et al. (2007), "Learning to Rank: From Pairwise Approach
     // to Listwise Approach" (ICML), top-one probability and cross-entropy.
     let scaled: Vec<f64> = predictions.iter().map(|&v| v / temperature).collect();
-    let lse = scaled.iter().copied().fold(f64::NEG_INFINITY, log_sum_exp);
+    let lse = scaled
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, logp::log_sum_exp2);
     let target_probs = softmax_temp(targets, temperature);
 
     let mut loss = 0.0;
@@ -237,7 +240,7 @@ pub fn listmle_loss(predictions: &[f64], targets: &[f64], temperature: f64) -> f
         // Denominator: sum over remaining items
         let mut log_denom = f64::NEG_INFINITY;
         for &jdx in target_order.iter().skip(i) {
-            log_denom = log_sum_exp(log_denom, scaled_scores[jdx]);
+            log_denom = logp::log_sum_exp2(log_denom, scaled_scores[jdx]);
         }
 
         loss -= score - log_denom;
@@ -306,18 +309,6 @@ fn softmax_temp(x: &[f64], temperature: f64) -> Vec<f64> {
     let exps: Vec<f64> = x.iter().map(|&v| ((v / temperature) - max).exp()).collect();
     let sum: f64 = exps.iter().sum();
     exps.iter().map(|&e| e / sum).collect()
-}
-
-fn log_sum_exp(a: f64, b: f64) -> f64 {
-    if a == f64::NEG_INFINITY {
-        b
-    } else if b == f64::NEG_INFINITY {
-        a
-    } else if a > b {
-        a + (1.0 + (b - a).exp()).ln()
-    } else {
-        b + (1.0 + (a - b).exp()).ln()
-    }
 }
 
 #[cfg(test)]

@@ -124,7 +124,7 @@ impl Regularizer for Shannon {
 
     fn conjugate(&self, theta: &[f64]) -> f64 {
         // log-sum-exp
-        log_sum_exp(theta)
+        logp::log_sum_exp(theta)
     }
 }
 
@@ -288,18 +288,6 @@ pub fn softmax(theta: &[f64]) -> Vec<f64> {
     let exps: Vec<f64> = theta.iter().map(|&t| (t - max).exp()).collect();
     let sum: f64 = exps.iter().sum();
     exps.iter().map(|&e| e / sum).collect()
-}
-
-/// Log-sum-exp (numerically stable).
-fn log_sum_exp(theta: &[f64]) -> f64 {
-    if theta.is_empty() {
-        return f64::NEG_INFINITY;
-    }
-    let max = theta.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-    if max == f64::NEG_INFINITY {
-        return f64::NEG_INFINITY;
-    }
-    max + theta.iter().map(|&t| (t - max).exp()).sum::<f64>().ln()
 }
 
 /// Sparsemax: Euclidean projection onto the probability simplex.

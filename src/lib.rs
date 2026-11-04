@@ -156,7 +156,6 @@
 #[doc = include_str!("../README.md")]
 pub struct ReadmeDoctests;
 
-#[cfg(feature = "logp")]
 mod bregman;
 pub mod curvature;
 pub mod fenchel;

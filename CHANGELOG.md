@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-04
+
 ### Changed
 - `logp` is a required dependency. `Shannon` and `SquaredL2` implement
   `logp::BregmanGenerator` without a feature flag; the `logp` feature is kept

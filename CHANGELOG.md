@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+- `logp` is a required dependency. `Shannon` and `SquaredL2` implement
+  `logp::BregmanGenerator` without a feature flag; the `logp` feature is kept
+  as a no-op so crates that enable it still build.
+- The private log-sum-exp copies in `fenchel`, `loss` and `sinkhorn` call
+  `logp::log_sum_exp` and `logp::log_sum_exp2`. Results on finite inputs are
+  bitwise identical (pinned by `tests/logp_lse_parity.rs`). A `+inf` entry in
+  the slice form, or `+inf` for both arguments of the pair form, now returns
+  `+inf` instead of `NaN`.
+
 ## [0.4.0] - 2026-11-02
 
 ### Fixed

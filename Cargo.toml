@@ -26,14 +26,15 @@ include = [
 default = []
 # Gumbel-Softmax for stochastic top-k
 gumbel = ["dep:drawset", "dep:rand"]
-# Implement logp::BregmanGenerator for exact Fenchel-Young/Bregman overlaps.
-logp = ["dep:logp"]
+# No-op since logp became a required dependency; kept so that crates enabling
+# it keep building. Remove at the next breaking release.
+logp = []
 
 [dependencies]
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 rand = { version = "0.9", optional = true }
-logp = { version = "0.2", optional = true }
+logp = "0.2"
 
 # Optional: SIMD primitives
 # Optional: Stochastic sampling

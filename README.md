@@ -66,8 +66,9 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 ## Features
 
 - `gumbel`: Gumbel-Softmax and Gumbel top-k sampling in `topk::gumbel`.
-- `logp`: implements `logp::BregmanGenerator` for the `Shannon` and
-  `SquaredL2` regularizers.
+
+`Shannon` and `SquaredL2` implement `logp::BregmanGenerator` without a feature
+flag. The `logp` feature is accepted for compatibility and does nothing.
 
 ## Examples
 

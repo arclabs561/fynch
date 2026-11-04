@@ -70,10 +70,9 @@ Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 `Shannon` and `SquaredL2` implement `logp::BregmanGenerator` without a feature
 flag. The `logp` feature is accepted for compatibility and does nothing.
 
-## Examples
+## Validation
 
-Runnable examples live in [`examples/`](examples/):
-
-- `soft_estimator_validation` checks the soft estimators against exact
-  references: `soft_rank` and `soft_sort` collapsing to their hard counterparts
-  as temperature goes to zero, and PAVA against hand-computed isotonic fits.
+[`tests/soft_estimator_validation.rs`](tests/soft_estimator_validation.rs)
+checks the soft estimators against exact references: `soft_rank` and
+`soft_sort` collapsing to their hard counterparts as temperature goes to zero,
+and PAVA against hand-computed isotonic fits. It runs under `cargo test`.

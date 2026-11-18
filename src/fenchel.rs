@@ -310,8 +310,14 @@ pub fn sparsemax(theta: &[f64]) -> Vec<f64> {
         return vec![];
     }
 
-    // Sort descending
-    let mut sorted: Vec<f64> = theta.to_vec();
+    // Translating all logits leaves the simplex projection unchanged. Center
+    // before adding the unit mass, which can round away at large magnitudes.
+    let max = theta.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    if max == f64::NEG_INFINITY {
+        return vec![0.0; theta.len()];
+    }
+    let shift = if max.is_finite() { max } else { 0.0 };
+    let mut sorted: Vec<_> = theta.iter().map(|&t| t - shift).collect();
     sorted.sort_by(|a, b| b.total_cmp(a));
 
     // Find k = max { j : 1 + j θ_(j) > Σᵢ≤j θ_(i) }
@@ -328,7 +334,7 @@ pub fn sparsemax(theta: &[f64]) -> Vec<f64> {
     let tau = (sorted[..k].iter().sum::<f64>() - 1.0) / k as f64;
 
     // Return [θᵢ - τ]₊
-    theta.iter().map(|&t| (t - tau).max(0.0)).collect()
+    theta.iter().map(|&t| (t - shift - tau).max(0.0)).collect()
 }
 
 /// Sparsemax loss (closed form).
@@ -570,6 +576,19 @@ mod tests {
         let p = softmax(&theta);
         let sum: f64 = p.iter().sum();
         assert!((sum - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn sparsemax_preserves_simplex_mass_at_large_offsets() {
+        let two_to_53 = 9_007_199_254_740_992.0;
+        for shift in [two_to_53, -two_to_53, f64::MAX, -f64::MAX] {
+            assert_eq!(sparsemax(&[shift, shift]), vec![0.5, 0.5]);
+            assert_eq!(
+                sparsemax(&[f64::NEG_INFINITY, shift, shift]),
+                vec![0.0, 0.5, 0.5]
+            );
+        }
+        assert_eq!(sparsemax(&[-f64::MAX, f64::MAX]), vec![0.0, 1.0]);
     }
 
     #[test]

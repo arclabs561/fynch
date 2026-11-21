@@ -49,6 +49,21 @@ Neither returns the index permutation produced by argsort.
 Lower `temperature` makes `soft_rank` and `soft_sort` approach the hard
 (discrete) result; higher temperature smooths them out.
 
+## What happens at a tie?
+
+Give two scores one unit of selection weight. At a tie each gets half.
+Raise the first score while leaving the second at zero to see the weight
+move between them:
+
+```sh
+cargo run --example lapsum_tie -- 0
+cargo run --example lapsum_tie -- 1
+```
+
+At zero the first weight has slope 0.25. The [example](examples/lapsum_tie.rs)
+checks the two-score formula by taking a finite difference of the public
+LapSum forward operation.
+
 ## Modules
 
 - `fenchel`: the generic framework (regularizers, prediction functions, losses).

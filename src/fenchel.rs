@@ -355,12 +355,29 @@ pub fn sparsemax_loss(theta: &[f64], y: &[f64]) -> f64 {
     let y_sq: f64 = y.iter().map(|&yi| yi * yi).sum();
     let p_sq: f64 = p.iter().map(|&pi| pi * pi).sum();
 
-    // ⟨ŷ - y, θ⟩
+    // On the simplex the coefficients sum to zero. Remove a common offset
+    // before multiplying to avoid cancellation for equal, large logits.
+    let shift = if y.iter().sum::<f64>() == 1.0 {
+        theta.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+    } else {
+        0.0
+    };
     let diff_inner: f64 = p
         .iter()
         .zip(y)
         .zip(theta)
-        .map(|((&pi, &yi), &ti)| (pi - yi) * ti)
+        .map(|((&pi, &yi), &ti)| {
+            let weight = pi - yi;
+            if weight == 0.0 {
+                return 0.0;
+            }
+            let centered = ti - shift;
+            if centered.is_finite() {
+                weight * centered
+            } else {
+                weight * ti - weight * shift
+            }
+        })
         .sum();
 
     0.5 * (y_sq - p_sq) + diff_inner
@@ -401,13 +418,16 @@ pub fn entmax(theta: &[f64], alpha: f64) -> Vec<f64> {
     }
 
     let alpha_minus_one = alpha - 1.0;
-    let scaled: Vec<f64> = theta.iter().map(|&score| score * alpha_minus_one).collect();
-    let max_scaled = scaled.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+    let max = theta.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let scaled: Vec<f64> = theta
+        .iter()
+        .map(|&score| (score - max) * alpha_minus_one)
+        .collect();
 
     // These bounds bracket a distribution ranging from a single active entry
     // to all entries sharing equal mass.
-    let mut tau_lo = max_scaled - 1.0;
-    let mut tau_hi = max_scaled - (1.0 / theta.len() as f64).powf(alpha_minus_one);
+    let mut tau_lo = -1.0;
+    let mut tau_hi = -(1.0 / theta.len() as f64).powf(alpha_minus_one);
 
     // Precompute the exponent once; it is constant throughout bisection.
     let inv_alpha_m1 = 1.0 / alpha_minus_one;
@@ -658,6 +678,17 @@ mod tests {
         for (got, want) in actual.iter().zip(expected) {
             assert!((got - want).abs() < 1e-12, "{got} != {want}");
         }
+    }
+
+    #[test]
+    fn large_common_offsets_preserve_probability_and_loss() {
+        let shift = 2.0_f64.powi(55);
+        assert_eq!(entmax(&[shift, shift], 1.5), vec![0.5, 0.5]);
+        for shift in [0.0, shift, -shift] {
+            let loss = sparsemax_loss(&[shift; 3], &[1.0, 0.0, 0.0]);
+            assert!((loss - 1.0 / 3.0).abs() < 1e-14);
+        }
+        assert_eq!(sparsemax_loss(&[-f64::MAX, f64::MAX], &[0.0, 1.0]), 0.0);
     }
 
     #[test]

@@ -337,6 +337,24 @@ pub fn sparsemax(theta: &[f64]) -> Vec<f64> {
     theta.iter().map(|&t| (t - shift - tau).max(0.0)).collect()
 }
 
+// Sum the residual from one, retaining low bits when a soft target has
+// components of very different magnitudes. Comparing the rounded sum to
+// one would also discard a real, small excess mass.
+fn unit_target_mass(y: &[f64]) -> bool {
+    let mut residual: f64 = -1.0;
+    let mut correction = 0.0;
+    for &yi in y {
+        let next = residual + yi;
+        correction += if residual.abs() >= yi.abs() {
+            (residual - next) + yi
+        } else {
+            (yi - next) + residual
+        };
+        residual = next;
+    }
+    residual + correction == 0.0
+}
+
 /// Sparsemax loss (closed form).
 ///
 /// ```text
@@ -357,7 +375,7 @@ pub fn sparsemax_loss(theta: &[f64], y: &[f64]) -> f64 {
 
     // On the simplex the coefficients sum to zero. Remove a common offset
     // before multiplying to avoid cancellation for equal, large logits.
-    let shift = if y.iter().sum::<f64>() == 1.0 {
+    let shift = if unit_target_mass(y) {
         theta.iter().copied().fold(f64::NEG_INFINITY, f64::max)
     } else {
         0.0
@@ -689,6 +707,22 @@ mod tests {
             assert!((loss - 1.0 / 3.0).abs() < 1e-14);
         }
         assert_eq!(sparsemax_loss(&[-f64::MAX, f64::MAX], &[0.0, 1.0]), 0.0);
+    }
+
+    #[test]
+    fn soft_target_mass_is_independent_of_accumulation_order() {
+        let tiny = 2.0_f64.powi(-55);
+        let y = [1.0 - 4.0 * tiny, tiny, tiny, tiny, tiny];
+        let mut reversed = y;
+        reversed.reverse();
+        for target in [y, reversed] {
+            assert!(unit_target_mass(&target));
+            let reference = sparsemax_loss(&[0.0; 5], &target);
+            for shift in [-2.0_f64.powi(55), 2.0_f64.powi(55)] {
+                assert_eq!(sparsemax_loss(&[shift; 5], &target), reference);
+            }
+        }
+        assert!(!unit_target_mass(&[1.0, tiny]));
     }
 
     #[test]

@@ -34,7 +34,7 @@ logp = []
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 rand = { version = "0.9", optional = true }
-logp = "0.2"
+logp = "0.3"
 
 # Optional: SIMD primitives
 # Optional: Stochastic sampling

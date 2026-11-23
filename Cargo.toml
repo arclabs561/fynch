@@ -45,7 +45,7 @@ approx = "0.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.5"
 rand = "0.9"
-rankops = { version = "0.2", default-features = false }
+rankops = { version = "0.5", default-features = false }
 serde_json = "1.0"
 
 [[bench]]
